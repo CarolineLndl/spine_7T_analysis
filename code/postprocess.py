@@ -375,7 +375,7 @@ class Postprocess_main:
         else:
             print("First level figure already exists, put redo=True to regenerate the figure")
 
-    def run_icc(self, IDs=None, i_fnames=None, o_dir=None, mask_file=None, threshold=0):
+    def run_icc(self, IDs=None, i_fnames=None, o_dir=None, mask_file=None, threshold=0, fwhm=[1,1,1],redo=False):
         
         if IDs==None:
                 raise ValueError('Please provide IDs labels (IDs=["sub-01","sub-02"])')
@@ -387,70 +387,71 @@ class Postprocess_main:
         all_maps=[]
 
         o_fname=os.path.join(o_dir, 'group_voxelwise_ICC')
-
-        for i, ID in enumerate(IDs):
-            
-            
-            if len(i_fnames[i]) != 2:
-                raise ValueError("Need exactly 2 files per individual")
-
-            # --- Load mask ---
-            if mask_file:
-                mask_img = nib.load(mask_file)
-            else:
-                mask_img = None
-
-            run_data = []
-            for f in i_fnames[i]:
-                img = nib.load(f)
-                data = img.get_fdata()
-
-                # --- resample mask to functional space ---
-                if mask_img:
-                    mask_resampled = resample_to_img(mask_img, img, interpolation='nearest').get_fdata() > 0
-                else:
-                    mask_resampled = data != 0  # fallback
-
-                # --- threshold ---
-                if threshold > 0:
-                    mask_resampled &= data > threshold
+        if not os.path.exists(o_fname) or redo:
+            for i, ID in enumerate(IDs):
                 
-                run_data.append(data[mask_resampled].ravel())
-            if len(run_data) != 2:
-                raise ValueError(f"Expected 2 runs but got {len(run_data)}")
-            run_data = np.stack(run_data, axis=1)
-            all_maps.append(run_data)
+                
+                if len(i_fnames[i]) != 2:
+                    raise ValueError("Need exactly 2 files per individual")
+
+                # --- Load mask ---
+                if mask_file:
+                    mask_img = nib.load(mask_file)
+                else:
+                    mask_img = None
+
+                run_data = []
+                for f in i_fnames[i]:
+                    img = nib.load(f)
+                    data = img.get_fdata()
+
+                    # --- resample mask to functional space ---
+                    if mask_img:
+                        mask_resampled = resample_to_img(mask_img, img, interpolation='nearest').get_fdata() > 0
+                    else:
+                        mask_resampled = data != 0  # fallback
+
+                    # --- threshold ---
+                    if threshold > 0:
+                        mask_resampled &= data > threshold
+                    
+                    run_data.append(data[mask_resampled].ravel())
+                if len(run_data) != 2:
+                    raise ValueError(f"Expected 2 runs but got {len(run_data)}")
+                run_data = np.stack(run_data, axis=1)
+                all_maps.append(run_data)
+            
+            # --- Convert to array: subjects × runs × voxels ---
+            all_maps_array = np.array([maps.T for maps in all_maps])  # subjects × runs × voxels
+
+            n_subjects, n_runs, n_voxels = all_maps_array.shape
+            icc_map = np.zeros(n_voxels)
+
+            # --- Compute voxelwise ICC(3,1) ---
+            for v in range(n_voxels):
+                voxel_data = all_maps_array[:, :, v]  # subjects × runs
+                df = pd.DataFrame({
+                    'ID': np.repeat(np.arange(n_subjects), n_runs),
+                    'run': np.tile(np.arange(n_runs), n_subjects),
+                    'value': voxel_data.ravel()
+                })
+                icc_result = pg.intraclass_corr(data=df, targets='ID', raters='run', ratings='value')
+                icc_map[v] = icc_result.loc[icc_result['Type'] == 'ICC3', 'ICC'].values[0]
+
+            # --- Save as NIfTI ---
+            icc_nii = np.zeros(mask_resampled.shape)
+            icc_nii[mask_resampled] = icc_map
+            icc_img = nib.Nifti1Image(icc_nii, affine=img.affine)
+            nib.save(icc_img, o_fname + ".nii.gz")
+
+            # apply smoothing for visual purpose
+            if fwhm:
+                icc_img_s=smooth_img(o_fname + ".nii.gz",fwhm=fwhm)
+                icc_img_s.to_filename(o_fname + "_s.nii.gz")
+
         
-        # --- Convert to array: subjects × runs × voxels ---
-        all_maps_array = np.array([maps.T for maps in all_maps])  # subjects × runs × voxels
 
-        n_subjects, n_runs, n_voxels = all_maps_array.shape
-        icc_map = np.zeros(n_voxels)
-
-        # --- Compute voxelwise ICC(3,1) ---
-        for v in range(n_voxels):
-            voxel_data = all_maps_array[:, :, v]  # subjects × runs
-            df = pd.DataFrame({
-                'ID': np.repeat(np.arange(n_subjects), n_runs),
-                'run': np.tile(np.arange(n_runs), n_subjects),
-                'value': voxel_data.ravel()
-            })
-            icc_result = pg.intraclass_corr(data=df, targets='ID', raters='run', ratings='value')
-            icc_map[v] = icc_result.loc[icc_result['Type'] == 'ICC3', 'ICC'].values[0]
-
-        # --- Save as NIfTI ---
-        icc_nii = np.zeros(mask_resampled.shape)
-        icc_nii[mask_resampled] = icc_map
-        icc_img = nib.Nifti1Image(icc_nii, affine=img.affine)
-        nib.save(icc_img, o_fname + ".nii.gz")
-
-        # apply smoothing for visual purpose
-        icc_img_s=smooth_img(o_fname + ".nii.gz",fwhm=[1,1,1])
-        icc_img_s.to_filename(o_fname + "_s.nii.gz")
-
-        
-
-        return icc_map
+        return o_fname + ".nii.gz"
 
         
     def run_second_level_glm(self,i_fnames=None,design_matrix=None,mask_fname=None,smoothing_fwhm=None,parametric=False,n_perm=10000,vox_thr=0.01,task_name=None,run_name=None,verbose=True,redo=False):
