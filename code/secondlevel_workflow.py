@@ -138,17 +138,19 @@ postprocess.plot_second_level_maps(i_fnames_pair=i_fnames_pair,
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------
-
-# Select input files
+# work only on participant with two shimSlice runs
 mask = os.path.join(first_level_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz")
-# --- Select stat map files ---
+
+# ----------  betwen shimSlice run01 vs run02 ---
+print("", flush=True)
+print(f'=== ICC between sliceShim run-01 and run-02  start', flush=True)
+print("=========================================", flush=True)
+output_dir=second_level_dir.format("icc_shimSlice_run01_run02")
 i_fnames_by_runs = []
 tag="task-motor_acq-shimSlice+3mm"
 IDs_2runs=[]
 for ID in IDs:
-    raw_func = sorted(glob.glob(os.path.join(
-        config["raw_dir"], f"sub-{ID}", "func", f"sub-{ID}_{tag}_*bold.nii.gz"
-    )))
+    raw_func = sorted(glob.glob(os.path.join( config["raw_dir"], f"sub-{ID}", "func", f"sub-{ID}_{tag}_*bold.nii.gz")))
     
     # Only keep participants with 2 runs
     if len(raw_func) != 2:
@@ -164,4 +166,34 @@ for ID in IDs:
     
     i_fnames_by_runs.append(i_fnames_runs)
 
-icc_map, all_maps_array=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs, mask_file=mask, threshold=0)
+icc_maps=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
+
+print("", flush=True)
+print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
+print("=========================================", flush=True)
+
+# ----------  betwen shimBase and shimSlice ---
+print("", flush=True)
+print(f'=== ICC between sliceShim aand sliceBase  start', flush=True)
+print("=========================================", flush=True)
+output_dir=second_level_dir.format("icc_shimBase_shimSlice")
+os.makedirs(output_dir, exist_ok=True)
+i_fnames_by_runs = []
+
+for ID in IDs_2runs:
+    i_fnames_runs = []
+    for acq_name in config["design_exp"]["acq_names"]:
+        tag="task-motor" + "_acq-" + acq_name
+        raw_func = sorted(glob.glob(os.path.join(config["raw_dir"], f"sub-{ID}", "func", f"sub-{ID}_{tag}_*bold.nii.gz")))
+        match = re.search(r"_?(run-\d+)", raw_func[0])
+        run_name = match.group(1) if match else ""
+
+        stat_map = glob.glob(os.path.join(first_level_dir.format(ID), tag, f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0]
+        i_fnames_runs.append(stat_map)
+    
+    i_fnames_by_runs.append(i_fnames_runs)
+
+icc_maps=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
+print("", flush=True)
+print(f'=== ICC between sliceShim aand sliceBase  done', flush=True)
+print("=========================================", flush=True)

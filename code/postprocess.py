@@ -382,15 +382,14 @@ class Postprocess_main:
         if i_fnames==None:
                 raise ValueError('Please provide filenames i_fnames=[["sub-01-run-01.nii.gz", "sub-01-run-02.nii.gz"],["sub-02-run-01.nii.gz", "sub-02-run-02.nii.gz"]]')
         
-        o_dir=self.second_level_dir.format("icc_analysis")
+        if o_dir==None:
+            o_dir=self.second_level_dir.format("icc_analysis")
         os.makedirs(o_dir,exist_ok=True)
         all_maps=[]
 
         o_fname=os.path.join(o_dir, 'group_voxelwise_ICC')
-        if not os.path.exists(o_fname) or redo:
+        if not os.path.exists(o_fname + '.nii.gz') or redo:
             for i, ID in enumerate(IDs):
-                
-                
                 if len(i_fnames[i]) != 2:
                     raise ValueError("Need exactly 2 files per individual")
 
@@ -448,8 +447,6 @@ class Postprocess_main:
             if fwhm:
                 icc_img_s=smooth_img(o_fname + ".nii.gz",fwhm=fwhm)
                 icc_img_s.to_filename(o_fname + "_s.nii.gz")
-
-        
 
         return o_fname + ".nii.gz"
 
