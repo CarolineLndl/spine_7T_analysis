@@ -135,5 +135,33 @@ postprocess.plot_second_level_maps(i_fnames_pair=i_fnames_pair,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
                                    
-# Next step:
-# - extract the number of voxels by conditions
+#------------------------------------------------------------------
+#------ compute test-retest reproductibility using ICC 
+#------------------------------------------------------------------
+
+# Select input files
+mask = os.path.join(first_level_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz")
+# --- Select stat map files ---
+i_fnames_by_runs = []
+tag="task-motor_acq-shimSlice+3mm"
+IDs_2runs=[]
+for ID in IDs:
+    raw_func = sorted(glob.glob(os.path.join(
+        config["raw_dir"], f"sub-{ID}", "func", f"sub-{ID}_{tag}_*bold.nii.gz"
+    )))
+    
+    # Only keep participants with 2 runs
+    if len(raw_func) != 2:
+        continue
+    IDs_2runs.append(ID)
+    i_fnames_runs = []
+    for fname in raw_func:
+        run_name = re.search(r"_?(run-\d+)", fname).group(1)
+        stat_map = glob.glob(os.path.join(
+            first_level_dir.format(ID), tag, f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"
+        ))[0]
+        i_fnames_runs.append(stat_map)
+    
+    i_fnames_by_runs.append(i_fnames_runs)
+
+icc_map, all_maps_array=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs, mask_file=mask, threshold=0)
