@@ -233,14 +233,6 @@ for sub_id in sorted(subject_files.keys()):
 
 
 output_dir=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "task")
-#postprocess.plot_first_level_maps(i_fnames_pair=i_fnames_pairs,
- #                                         output_fname=os.path.join(output_dir, F"first_level_shimBase_vs_shimSlice_n{len(i_fnames_pairs)}.png"),
-  #                                        background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-   #                                       mask_fname=cropped_PAM50_fname,
-    #                                      #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
-     #                                     task_name=tag,
-      #                                    verbose=True,
-       #                                   redo=redo)
 
 #-----------------------------------------------------------------------------
 #------ III.  Plot first level results: shimSlice # 1 vs. shimSlice #2
