@@ -370,62 +370,57 @@ class Postprocess_main:
         else:
             print("First level figure already exists, put redo=True to regenerate the figure")
 
-    def run_icc(self, i_fnames=None, mask_file=None, threshold=0):
-        if i_fnames is None or len(i_fnames) == 0:
-            raise ValueError("i_fnames is empty or not enough files")
+    def run_icc(self, IDs=None, i_fnames=None, o_dir=None, mask_file=None, threshold=0):
+        
+        if IDs==None:
+                raise ValueError('Please provide IDs labels (IDs=["sub-01","sub-02"])')
+        if i_fnames==None:
+                raise ValueError('Please provide filenames i_fnames=[["sub-01-run-01.nii.gz", "sub-01-run-02.nii.gz"],["sub-02-run-01.nii.gz", "sub-02-run-02.nii.gz"]]')
+        
+        o_dir=self.first_level_dir.split("sub-")[0] + "/icc_analysis/"
+        os.makedirs(o_dir,exist_ok=True)
+        all_maps=[]
 
-        # --- Load common mask ---
-        if mask_file is not None:
-            mask_img = nib.load(mask_file)
-            common_mask = mask_img.get_fdata() > 0  # boolean mask
-        else:
-            # compute intersection mask across subjects and runs
-            common_mask = None
-            for subj_files in i_fnames:
-                subj_mask = None
-                for f in subj_files:
-                    data = nib.load(f).get_fdata()
-                    data_mask = data != 0
-                    if subj_mask is None:
-                        subj_mask = data_mask
-                    else:
-                        subj_mask &= data_mask  # intersection across runs
-                if common_mask is None:
-                    common_mask = subj_mask
-                else:
-                    common_mask &= subj_mask  # intersection across subjects
+        for i, ID in enumerate(IDs):
+            
+            
+            if len(i_fnames[i]) != 2:
+                raise ValueError("Need exactly 2 files per individual")
 
-        # --- Load and mask functional maps ---
-        all_maps = []
-        for subj_files in i_fnames:
-            subj_maps = []
-            for f in subj_files:
-                func_img = nib.load(f)
-                data = func_img.get_fdata()
+            # --- Load mask ---
+            if mask_file:
+                mask_img = nib.load(mask_file)
+            else:
+                mask_img = None
 
-                # --- RESAMPLE COMMON MASK TO FUNCTIONAL MAP SPACE ---
-                if mask_file is not None or common_mask is not None:
-                    mask_img = nib.load(mask_file)  # has correct affine
-                    mask_resampled_img = resample_to_img(mask_img, func_img, interpolation='nearest')
-                    mask_resampled = mask_resampled_img.get_fdata() > 0
-  
+            run_data = []
+            for f in i_fnames[i]:
+                img = nib.load(f)
+                data = img.get_fdata()
+
+                # --- resample mask to functional space ---
+                if mask_img:
+                    mask_resampled = resample_to_img(mask_img, img, interpolation='nearest').get_fdata() > 0
                 else:
                     mask_resampled = data != 0  # fallback
-                # apply threshold & common mask
-                masked_data = data[mask_resampled]
-                subj_maps.append(masked_data.ravel())
 
+                # --- threshold ---
+                if threshold > 0:
+                    mask_resampled &= data > threshold
+                
+                run_data.append(data[mask_resampled].ravel())
+            if len(run_data) != 2:
+                raise ValueError(f"Expected 2 runs but got {len(run_data)}")
+            run_data = np.stack(run_data, axis=1)
+            all_maps.append(run_data)
+        
+        # --- Convert to array: subjects × runs × voxels ---
+        all_maps_array = np.array([maps.T for maps in all_maps])  # subjects × runs × voxels
 
-            all_maps.append(subj_maps)
-
-        # --- Convert to array ---
-        n_subjects = len(all_maps)
-        n_runs = len(all_maps[0])
-        n_voxels = all_maps[0][0].size
-        all_maps_array = np.array([np.stack(maps, axis=0) for maps in all_maps])  # subjects × runs × voxels
-
-        # --- Compute voxel-wise ICC ---
+        n_subjects, n_runs, n_voxels = all_maps_array.shape
         icc_map = np.zeros(n_voxels)
+
+        # --- Compute voxelwise ICC(3,1) ---
         for v in range(n_voxels):
             voxel_data = all_maps_array[:, :, v]  # subjects × runs
             df = pd.DataFrame({
@@ -434,9 +429,23 @@ class Postprocess_main:
                 'value': voxel_data.ravel()
             })
             icc_result = pg.intraclass_corr(data=df, targets='ID', raters='run', ratings='value')
-            icc_map[v] = icc_result[icc_result['Type'] == 'ICC3']['ICC'].values[0]
+            icc_map[v] = icc_result.loc[icc_result['Type'] == 'ICC3', 'ICC'].values[0]
 
-        return icc_map, all_maps_array
+        # --- Optional: save as NIfTI ---
+        icc_nii = np.zeros(mask_resampled.shape)
+        icc_nii[mask_resampled] = icc_map
+        icc_img = nib.Nifti1Image(icc_nii, affine=img.affine)
+        nib.save(icc_img, os.path.join(o_dir, 'group_voxelwise_ICC.nii.gz'))
+            
+        #save ICC map as Nifti
+        # img is one of the run images to get the affine
+        #icc_nii = np.zeros(img.shape)
+        #icc_nii[mask_resampled] = icc_map
+        #icc_img = nib.Nifti1Image(icc_nii, affine=img.affine)
+        #nib.save(icc_img, indiv_dir + f"sub-{ID}_icc_map.nii.gz")
+
+        return icc_map
+
         
     def run_second_level_glm(self,i_fnames=None,design_matrix=None,mask_fname=None,smoothing_fwhm=None,parametric=False,n_perm=10000,vox_thr=0.01,task_name=None,run_name=None,verbose=True,redo=False):
         '''
