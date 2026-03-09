@@ -127,9 +127,9 @@ for task_name in config["design_exp"]["task_names"]:
         tag="task-" + task_name + "_acq-" + acq_name
         i_fnames_pair.append(os.path.join(second_level_dir.format(tag),f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
 
-output_dir=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "task")
+output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "task")
 postprocess.plot_second_level_maps(i_fnames_pair=i_fnames_pair, 
-                                   output_dir=output_dir,
+                                   output_dir=output_fig,
                                    stat_min=2.3, 
                                    stat_max=6,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
@@ -166,7 +166,14 @@ for ID in IDs:
     
     i_fnames_by_runs.append(i_fnames_runs)
 
-icc_maps=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
+icc_maps,icc_maps_s=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
+postprocess.plot_ICC_maps(i_fname=icc_maps,
+                          output_fname=output_fig + "/icc_run-01_run-02.png",
+                          cmap="turbo",
+                          stat_min=0.1,
+                          stat_max=0.9,
+                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
 
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
@@ -179,6 +186,9 @@ print("=========================================", flush=True)
 output_dir=second_level_dir.format("icc_shimBase_shimSlice")
 os.makedirs(output_dir, exist_ok=True)
 i_fnames_by_runs = []
+
+
+
 
 for ID in IDs_2runs:
     i_fnames_runs = []

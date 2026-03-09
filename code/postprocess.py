@@ -448,7 +448,153 @@ class Postprocess_main:
                 icc_img_s=smooth_img(o_fname + ".nii.gz",fwhm=fwhm)
                 icc_img_s.to_filename(o_fname + "_s.nii.gz")
 
-        return o_fname + ".nii.gz"
+        return o_fname + ".nii.gz",  o_fname + "_s.nii.gz"
+    
+    def plot_ICC_maps(self, i_fname=None, output_fname=None,stat_min=0.5, stat_max=0.9,background_fname=None,cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
+        """
+        Plot second-level statistical maps for two maps.
+
+        """
+        if output_fname is None:
+            raise ValueError("output_fname is empty")
+        if i_fname is None or len(i_fname) == 0:
+            raise ValueError("i_fnames_pair is empty")
+        if background_fname is None :
+            raise ValueError("Please provide PAM50 template filename")
+
+        # --- Figure and gridspec ---
+        fig = plt.figure(figsize=(1, 3))
+        fig.subplots_adjust(left=0.01,right=0.99,top=0.99,bottom=0.01)
+        
+        height_ratios = [6.5, 2.5]  # coronal, axial
+        
+        gs = fig.add_gridspec(nrows=2, ncols=3, 
+                              height_ratios=height_ratios,
+                               width_ratios=[0.2,0.1,1], hspace=0.01, wspace=0.05)
+
+
+        # --- Load template, mask, and underlay ---
+        template_img = nib.load(background_fname)
+        template_data = nib.as_closest_canonical(template_img).get_fdata()
+        
+        if underlay_fname is not None:
+            underlay_data = nib.as_closest_canonical(nib.load(underlay_fname)).get_fdata()
+        
+        # --- Plotting ---
+        num_voxels_list=[];values_list=[]
+
+        stat_img = nib.as_closest_canonical(nib.load(i_fname))
+        statmap_data = stat_img.get_fdata()
+
+        # --- Coronal slice ---
+        x_min, x_max = 35, 105
+        z_min, z_max = 172, 333
+
+        # Find y_slice along y-axis with maximum intensity
+        crop_data = statmap_data[x_min:x_max, :, z_min:z_max]
+        y_slice = 72#np.argmax(np.nanmax(crop_data, axis=(0, 2)))  # max over x and z, returns y index
+        cor_slice = statmap_data[x_min:x_max,y_slice,z_min:z_max]
+        cor_slice = np.where(cor_slice > stat_min, cor_slice, np.nan)
+        cor_slice=cor_slice.T
+
+        ax_cor = fig.add_subplot(gs[0, 2])
+        template_cor = template_data[x_min:x_max, y_slice, z_min:z_max].T
+        ax_cor.imshow(template_cor, cmap="gray", origin="lower", aspect="auto")
+        im_cor = ax_cor.imshow(cor_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
+        ax_cor.text(0.5, 0.01, f"y={y_slice}", color="white", fontsize=5,ha="center", va="bottom", transform=ax_cor.transAxes)
+            
+        ax_cor.axis("off")
+
+
+        # --- Axial slice ---
+        crop_x = 30
+        crop_y = 30
+        x0 = statmap_data.shape[0] // 2
+        y0 = statmap_data.shape[1] // 2
+        x_min, x_max = x0 - crop_x, x0 + crop_x
+        y_min, y_max = y0 - crop_y, y0 + crop_y
+            
+        crop_data = statmap_data[x_min:x_max, y_min:y_max, :]
+        z_slice = 296#np.argmax(np.nanmax(crop_data, axis=(0, 1)))  # max over x and z, returns y index
+        axi_slice = crop_data[:, :, z_slice]
+        axi_slice = np.where(axi_slice > stat_min, axi_slice, np.nan)
+        axi_slice=axi_slice.T
+
+        ax_axi = fig.add_subplot(gs[1, 2])
+        template_axi = template_data[x_min:x_max, y_min:y_max, z_slice].T
+        underlay_axi = underlay_data[x_min:x_max, y_min:y_max, z_slice].T
+        ax_axi.imshow(template_axi, cmap="gray", origin="lower", aspect="auto")
+        ax_axi.imshow(underlay_axi, cmap="gray", origin="lower", aspect="auto",alpha=0.1)
+            
+        im_axi = ax_axi.imshow(axi_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
+        ax_axi.axis("off")
+        ax_axi.text(0.5, 0.01, f"z={z_slice}", color="white", fontsize=5,ha="center", va="bottom", transform=ax_axi.transAxes)
+        ax_cor.axhline(y=z_slice - z_min, color='white', linestyle='--', linewidth=0.8, alpha=0.7)
+        
+        ax_cor.text(0.05, 0.05, "L", transform=ax_cor.transAxes, color="white", fontsize=7, ha="left", va="bottom")
+        ax_cor.text(0.95, 0.05, "R", transform=ax_cor.transAxes, color="white", fontsize=7, ha="right", va="bottom")
+        ax_axi.text(0.02, 0.5, "L", transform=ax_axi.transAxes, color="white", fontsize=7, ha="left", va="center")
+        ax_axi.text(0.98, 0.5, "R", transform=ax_axi.transAxes, color="white", fontsize=7, ha="right", va="center")
+        ax_axi.text(0.5, 0.90, "A", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="top")
+        ax_axi.text(0.5, 0.12, "P", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="bottom")
+
+
+        # -- Shared colorbar
+        
+        cbar_ax = fig.add_axes([0.08, 0.05, 0.08, 0.15])  # left, bottom, width, height
+        norm = plt.Normalize(vmin=stat_min, vmax=stat_max)
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+
+        cbar = fig.colorbar(sm, cax=cbar_ax)
+        cbar.set_label('icc', fontsize=6, labelpad=1.5,fontweight='bold',fontname="Arial")
+        cbar.ax.set_yticks([])
+        cbar.ax.text(1.35, 1.1, f"{stat_max:.1f}", fontsize=6, va='center', ha='right', color='black', transform=cbar.ax.transAxes)
+        cbar.ax.text(1.35, -0.12, f"{stat_min:.1f}", fontsize=6, va='center', ha='right', color='black', transform=cbar.ax.transAxes)
+        cbar.ax.set_frame_on(False)
+
+        # -- plot spinal levels at the very left side
+        ax_levels = fig.add_subplot(gs[0, 1])
+        ax_levels.axis("off") 
+        spinal_levels = {5: range(300, 333),  # C5
+                     6: range(269, 300),  # C6
+                     7: range(238, 269),  # C7
+                     8: range(206, 238),  # C8
+                     9: range(172, 206)  # T1
+                     } 
+        data_spinal_levels = np.zeros((cor_slice.shape[0], z_max - z_min))  # height x width
+        print(data_spinal_levels.shape)
+        for level, z_range in spinal_levels.items():
+            z_start = max(z_range.start, z_min)
+            z_end = min(z_range.stop, z_max)
+            if z_start >= z_end:
+                continue
+
+            z_inds = np.arange(z_start, z_end) - z_min  
+            data_spinal_levels[:, z_inds] = level  
+        
+        data_spinal_alpha = np.zeros_like(data_spinal_levels, dtype=float)
+        data_spinal_alpha[data_spinal_levels > 0] = 1
+        data_spinal_levels_2 = np.copy(data_spinal_levels).astype(float)
+        data_spinal_levels_2[data_spinal_levels % 2 == 0] = 0.5
+        data_spinal_levels_2[data_spinal_levels % 2 == 1] = 0.75 
+
+        ax_levels.imshow(data_spinal_levels_2.T, cmap="gray", vmin=0, vmax=1, alpha=data_spinal_alpha.T, origin='lower', aspect='auto')
+
+        # --- Add text for the segmental labels
+        ax_levels_txt = fig.add_subplot(gs[0, 0])
+        ax_levels_txt.axis("off")  # we only want labels and lines
+
+        ax_levels_txt.text(-0.24, 0.9, "C5", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
+        ax_levels_txt.text(-0.24, 0.68, "C6", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
+        ax_levels_txt.text(-0.24, 0.49, "C7", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
+        ax_levels_txt.text(-0.24, 0.3, "C8", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
+        ax_levels_txt.text(-0.24, 0.1, "T1", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
+
+        out_file=os.path.join(output_fname)
+        plt.savefig(out_file, dpi=300)
+        plt.close(fig)
+
 
         
     def run_second_level_glm(self,i_fnames=None,design_matrix=None,mask_fname=None,smoothing_fwhm=None,parametric=False,n_perm=10000,vox_thr=0.01,task_name=None,run_name=None,verbose=True,redo=False):
