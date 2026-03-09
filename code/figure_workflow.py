@@ -72,7 +72,7 @@ def main():
 
     # EPI comparison figure
     fig_epi_comparison = FigureEpiComparison(config, IDs, redo)
-    fig_epi_comparison.create_figure(show_avg=True)
+    fig_epi_comparison.create_figure(show_avg=False)
 
     print("=== Figure script End ===", flush=True)
 
