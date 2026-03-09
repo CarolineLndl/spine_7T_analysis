@@ -13,3 +13,4 @@ pybids
 dcm2niix
 seaborn
 nipype
+pingouin

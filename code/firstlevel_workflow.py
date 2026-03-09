@@ -19,6 +19,7 @@ from nilearn.glm import threshold_stats_img
 import nibabel as nib
 import numpy as np
 from collections import defaultdict
+import pingouin as pg
 
 # Get the environment variable PATH_CODE
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -72,7 +73,7 @@ os.makedirs(main_fig_dir, exist_ok=True)
 os.makedirs(fig_task_dir, exist_ok=True)
 
 #------------------------------------------------------------------
-#------ First level
+#------ I. Run First level
 #------------------------------------------------------------------
 print("")
 print("=== First level analysis script Start ===", flush=True)
@@ -80,8 +81,7 @@ print("Participant(s) included : ", IDs, flush=True)
 print("===================================", flush=True)
 print("")
 
-df_task = pd.DataFrame(columns=["ID", "task", "acq", "run", "contrast", "max_zscore", "active_voxels"])
-fname_task_metrics = os.path.join(fig_task_dir, "first_level_metrics_n" + str(len(IDs)) + ".csv")
+#------ I.1 Select files 
 norm_mask=[]
 for ID_nb, ID in enumerate(IDs):
     print("", flush=True)
@@ -101,6 +101,7 @@ for ID_nb, ID in enumerate(IDs):
                     run_name=""
 
                 denoised_fmri=glob.glob(os.path.join(denoising_dir.format(ID ), tag, config["denoising"]["denoised_dir"],"*"+run_name+"*_nostd_s.nii.gz"))[0]
+                print(os.path.join(preprocessing_dir.format(ID), 'func',tag, config["preprocess_f"]["func_seg"].format(ID,tag,"")))
                 cord_seg_file = glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',tag, config["preprocess_f"]["func_seg"].format(ID,tag,"")))[0]
                 warp_file = os.path.join(preprocessing_dir.format(ID), 'func', tag, f"sub-{ID}_{tag}_from-func_to_PAM50_mode-image_xfm.nii.gz")
 
@@ -113,8 +114,7 @@ for ID_nb, ID in enumerate(IDs):
 
                 events_file=glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*{run_name}*events.tsv'))[0]
 
-                #------------------------------------------------------------------
-                #------ I. Run first level GLM
+                #------ I.2 Run first level GLM
                 stat_maps=postprocess.run_first_level_glm(ID=ID,
                                                           i_fname=denoised_fmri,
                                                           events_file=events_file,
@@ -124,7 +124,7 @@ for ID_nb, ID in enumerate(IDs):
                                                           redo=redo,
                                                           verbose=verbose)
 
-                #------ II. Apply correction and extract metrics
+                #------ I.2 Apply correction and extract metrics
                 for i, contrast_fname in enumerate(stat_maps):
                     # Apply correction
                     corr_type="fpr";alpha=0.01;cluster=0
@@ -138,26 +138,9 @@ for ID_nb, ID in enumerate(IDs):
                                                                         cluster_threshold=cluster,
                                                                             two_sided=False)
                         thresholded_map.to_filename(fname_thr_img)
-
-                    # extract max z-score and total number of active voxels in the spinal cord mask
-                    if "RH-rest" in contrast_fname:
-                        if run_name != "run-02":
-                            if not os.path.exists(fname_task_metrics) or redo:
-                                img = nib.load(fname_thr_img)
-                                mask = nib.load(cord_seg_file)
-                                masked_data = img.get_fdata() * mask.get_fdata()# Extract values within the mask
-                                max_zscore = np.max(masked_data[masked_data > 0]) if np.any(masked_data > 0) else 0 # Find max z-score in the mask
-                                active_voxels = np.sum(masked_data > 0)# Count active voxels in the mask
-
-                                #store in a dataframe for each individual, task_name,acq_name, run_name and contrast
-                                if len(df_task) == 0:
-                                    df_task = pd.DataFrame([[ID,task_name,acq_name,run_name,"RH-rest",max_zscore,active_voxels]], columns=df_task.columns)
-                                
-                                df_task = pd.concat([df_task, pd.DataFrame([[ID,task_name,acq_name,run_name,"RH-rest",max_zscore,active_voxels]], columns=df_task.columns)], ignore_index=True)
-                                
-                
-                #------ III. Normalize the resulting stat maps to PAM50 template space
-
+   
+                #------ I.3 Normalization 
+                # Normlaize the resulting stat maps to PAM50 template space
                 for i, contrast_fname in enumerate(stat_maps):
                     norm_stat_maps=preprocess_Sc.apply_warp(
                             i_img=[stat_maps[i]], # input clean image
@@ -188,7 +171,10 @@ for ID_nb, ID in enumerate(IDs):
     print(f'=== First level done for : {ID} ===', flush=True)
     print("=========================================", flush=True)
 
-#------ IV. Extract the commun mask for all participants and tasks
+
+#------------------------------------------------------------------
+#------ II. Extract the commun mask for all participants and tasks
+#------------------------------------------------------------------
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
 cropped_PAM50_fname = os.path.join(first_level_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz")
@@ -216,9 +202,9 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
     cmd = f"fslroi {pam50_fname} {cropped_PAM50_fname} 0 -1 0 -1 {z_min} {z_size}"
     os.system(cmd)
 
-
-#------ V. Plot first level results for each task and participant
-
+#------------------------------------------------------------------
+#------ III.  Plot first level results: shimBase vs. shimSlice
+#------------------------------------------------------------------
 # --- Select stat map files ---
 i_fnames=[]
 for task_name in config["design_exp"]["task_names"]:
@@ -245,16 +231,45 @@ for sub_id in sorted(subject_files.keys()):
     if len(pair) == 2:
         i_fnames_pairs.append(pair)
 
+
 output_dir=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "task")
-postprocess.plot_first_level_maps(i_fnames_pair=i_fnames_pairs,
-                                          output_dir=output_dir,
+
+#-----------------------------------------------------------------------------
+#------ III.  Plot first level results: shimSlice # 1 vs. shimSlice #2
+#----------------------------------------------------------------------------
+# --- Select stat map files ---
+
+i_fnames_by_runs = []
+for ID in IDs:
+    #Check i their is multiple run for this participant
+    i_fnames_runs=[]
+    for task_name in config["design_exp"]["task_names"]:
+        for acq_name in config["design_exp"]["acq_names"]:
+            tag="task-" + task_name + "_acq-" + acq_name
+            raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
+            if len(raw_func)==2 and tag=="task-motor_acq-shimSlice+3mm":
+                for fname in raw_func:
+                    match = re.search(r"_?(run-\d+)", fname)
+                    run_name = match.group(1)
+                    i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format(ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
+            else:
+                match = re.search(r"_?(run-\d+)", raw_func[0])
+                if match:
+                    run_name=match.group(1)
+                else:
+                    run_name=""
+                i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format(ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
+                 
+    i_fnames_by_runs.append(i_fnames_runs)
+
+postprocess.plot_first_level_maps(i_fnames=i_fnames_by_runs,
+                                          output_fname=os.path.join(output_dir, F"first_level_by_runs_n{len(i_fnames_by_runs)}.png"),
                                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                           mask_fname=cropped_PAM50_fname,
-                                          #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
+                                          titles=["shimBase","shimSlice","shimSlice"],
+                                         #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
                                           task_name=tag,
                                           verbose=True,
-                                          redo=redo)
+                                           redo=redo)
 
-#if not os.path.exists(fname_task_metrics) or redo:
- #   df_task.to_csv(fname_task_metrics, index=False)
-  #  print(f"Task metrics saved to: {fname_task_metrics}")
+
