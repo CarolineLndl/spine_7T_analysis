@@ -5,17 +5,22 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import matplotlib.pyplot as plt
+
+# nilearn
 from nilearn.plotting import plot_design_matrix
 from nilearn.glm.first_level import FirstLevelModel
 from nilearn.glm.second_level import SecondLevelModel
 from nilearn.glm.second_level import non_parametric_inference
+from nilearn.image import resample_to_img
+from nilearn.image import smooth_img
+
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from preprocess import Preprocess_main, Preprocess_Sc
 from nibabel.processing import resample_from_to
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import matplotlib
 import pingouin as pg
-from nilearn.image import resample_to_img
+
 
 #####################################################
 class Postprocess_main:
@@ -377,9 +382,11 @@ class Postprocess_main:
         if i_fnames==None:
                 raise ValueError('Please provide filenames i_fnames=[["sub-01-run-01.nii.gz", "sub-01-run-02.nii.gz"],["sub-02-run-01.nii.gz", "sub-02-run-02.nii.gz"]]')
         
-        o_dir=self.first_level_dir.split("sub-")[0] + "/icc_analysis/"
+        o_dir=self.second_level_dir.format("icc_analysis")
         os.makedirs(o_dir,exist_ok=True)
         all_maps=[]
+
+        o_fname=os.path.join(o_dir, 'group_voxelwise_ICC')
 
         for i, ID in enumerate(IDs):
             
@@ -431,18 +438,17 @@ class Postprocess_main:
             icc_result = pg.intraclass_corr(data=df, targets='ID', raters='run', ratings='value')
             icc_map[v] = icc_result.loc[icc_result['Type'] == 'ICC3', 'ICC'].values[0]
 
-        # --- Optional: save as NIfTI ---
+        # --- Save as NIfTI ---
         icc_nii = np.zeros(mask_resampled.shape)
         icc_nii[mask_resampled] = icc_map
         icc_img = nib.Nifti1Image(icc_nii, affine=img.affine)
-        nib.save(icc_img, os.path.join(o_dir, 'group_voxelwise_ICC.nii.gz'))
-            
-        #save ICC map as Nifti
-        # img is one of the run images to get the affine
-        #icc_nii = np.zeros(img.shape)
-        #icc_nii[mask_resampled] = icc_map
-        #icc_img = nib.Nifti1Image(icc_nii, affine=img.affine)
-        #nib.save(icc_img, indiv_dir + f"sub-{ID}_icc_map.nii.gz")
+        nib.save(icc_img, o_fname + ".nii.gz")
+
+        # apply smoothing for visual purpose
+        icc_img_s=smooth_img(o_fname + ".nii.gz",fwhm=[1,1,1])
+        icc_img_s.to_filename(o_fname + "_s.nii.gz")
+
+        
 
         return icc_map
 
