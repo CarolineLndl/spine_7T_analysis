@@ -47,21 +47,11 @@ class Figures_main:
         self.first_level_dir = os.path.join(self.config["raw_dir"], self.config["first_level"]["dir"])  # directory of the derivatives data
         self.second_level_dir = os.path.join(self.config["raw_dir"], self.config["second_level"]["dir"])  # directory of the second-level analysis data
         self.manual_dir = os.path.join(self.config["raw_dir"], self.config["manual_dir"])  # directory of the manual corrections
+        self.first_level_fig=os.path.join(self.config["raw_dir"], self.config["figures_dir"]["main_dir"],"first_level") 
+        self.second_level_fig=os.path.join(self.config["raw_dir"], self.config["figures_dir"]["main_dir"],"second_level")
 
-        # Create directories -------------------------------------------------------------------------------------
-        for ID in self.participant_IDs:
-            ID_first_level_dir=self.first_level_dir.format(ID)
-            os.makedirs(ID_first_level_dir, exist_ok=True)
-
-            # Create a folder for each task in participant folder
-            if "design_exp" in self.config.keys():
-                for ses_name in self.config["design_exp"]['ses_names']:
-                    ses_dir=ses_name if int(self.config["design_exp"]["ses_nb"])>1 else ""
-                    if "acq_names" in self.config["design_exp"].keys():
-                        for task_name in self.config["design_exp"]['task_names']:
-                            for acq_name in self.config["design_exp"]['acq_names']:
-                                tag="task-" + task_name + "_acq-" + acq_name
-                                os.makedirs(ID_first_level_dir + tag ,exist_ok=True)
+        os.makedirs(self.first_level_fig,exist_ok=True)
+        os.makedirs(self.second_level_fig,exist_ok=True)
         
     
     def plot_first_level_maps(self, i_fnames=None, output_fname=None,titles=["shimBase","shimSlice",""],cmap="autumn",stat_min=1.6, stat_max=4,background_fname=None,mask_fname=None, underlay_fname=None,task_name=None,plot_mip=True, verbose=True, redo=False,n_cols=5):

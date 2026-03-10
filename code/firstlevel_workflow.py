@@ -58,9 +58,11 @@ if tasks != [""]:
 #Import scripts
 sys.path.append(path_code + "/code/") # Change this line according to your directory
 import postprocess, preprocess
+import figures
 
 glm_ana=postprocess.GLM_main(config,IDs=IDs)
 preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
+figures=figures.Figures_main(config, IDs=IDs)
 
 # initialize directories
 preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["main_dir"])
@@ -251,13 +253,13 @@ for ID in IDs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 #To be implemented
-#postprocess.plot_first_level_maps(i_fnames=i_fnames_by_runs,
- #                                         output_fname=os.path.join(fig_task_dir, F"first_level_by_runs_n{len(i_fnames_by_runs)}.png"),
-  #                                        background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-   #                                       mask_fname=cropped_PAM50_fname,
-    #                                      titles=["shimBase","shimSlice","shimSlice"],
-     #                                    #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
-      #                                    task_name=tag,
-       #                                   verbose=True,
-        #                                   redo=redo)
+postprocess.plot_first_level_maps(i_fnames=i_fnames_by_runs,
+                                         output_fname=os.path.join(fig_task_dir, F"first_level_by_runs_n{len(i_fnames_by_runs)}.png"),
+                                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+                                          mask_fname=cropped_PAM50_fname,
+                                          titles=["shimBase","shimSlice","shimSlice"],
+                                         #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
+                                          task_name=tag,
+                                          verbose=True,
+                                           redo=redo)
 
