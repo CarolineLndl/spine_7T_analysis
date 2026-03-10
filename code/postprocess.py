@@ -392,7 +392,9 @@ class TSNR_main:
         self.config = config
         self.redo = redo
         self.first_level_dir = os.path.join(self.config["raw_dir"], self.config["first_level"]["dir"])  # directory of the derivatives data
+        self.second_level_dir= os.path.join(self.config["raw_dir"], self.config["second_level"]["dir"])
         self.path_tsnr = os.path.join(self.first_level_dir.format("tsnr","").split("sub")[0])
+        self.path_tsnr_inTemplate = os.path.join(self.second_level_dir.format("tsnr"))
         #self.fname_tsnr_baseline_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_baseline_avg_in_PAM50.nii.gz")
         #self.fname_tsnr_slicewise_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_slicewise_avg_in_PAM50.nii.gz")
 
@@ -407,7 +409,7 @@ class TSNR_main:
         for ID in self.IDs:
             for task in self.config["design_exp"]["task_names"]:
                 for acq_name in self.config["design_exp"]["acq_names"]:
-                    selected_file = self.find_moco_for_tsnr_calculation(self.config, ID, task, acq_name)
+                    selected_file = self.find_moco_for_tsnr_calculation(ID, task, acq_name)
                     if selected_file is None:
                         continue
                     n_vols = nib.load(selected_file).shape[3]
@@ -422,7 +424,7 @@ class TSNR_main:
                 for acq_name in self.config["design_exp"]["acq_names"]:
                     tag = "task-" + task + "_acq-" + acq_name
 
-                    selected_file = self.find_moco_for_tsnr_calculation(self.config, ID, task, acq_name)
+                    selected_file = self.find_moco_for_tsnr_calculation(ID, task, acq_name)
                     if selected_file is None:
                         continue
 
@@ -595,7 +597,8 @@ class TSNR_main:
                                                  header=nii_slicewise.header)
         nib.save(nii_tsnr_slicewise_avg, fname_tsnr_slicewise_avg)
     
-    def find_moco_for_tsnr_calculation(self,config, ID, task, acq_name):
+    def find_moco_for_tsnr_calculation(self, ID, task, acq_name):
+
         files = glob.glob(os.path.join(
             self.config["raw_dir"],
             self.config["preprocess_dir"]["main_dir"].format(ID),
@@ -619,5 +622,71 @@ class TSNR_main:
                     selected_file = f
         return selected_file
 
+    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None, redo=False):
+        
+        if IDs is None:
+            raise ValueError("Please provide a list of participant IDs (e.g., _.stc(IDs=['A001','A002'])).")
+        if tsnr_fnames is None:
+            raise ValueError("Please provide a list of the input tSNR filenames.")
+        if seg_fnames is None:
+            raise ValueError("Please provide a list of the input segmentation filenames.")
+        if warp_fnames is None:
+            raise ValueError("Please provide a list of the input warping field filenames.")
+        
+        print("=== Generate average tSNR maps in PAM50  ===", flush=True)
+        fname_template = os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"])
+        nii_template = nib.load(fname_template)
+        data_tsnr = np.zeros_like(nii_template.get_fdata(), dtype=float)
+        data_count_id = None
+        
+        fname_tsnr_avg = os.path.join(self.path_tsnr_inTemplate, f"tsnr_n{str(len(tsnr_fnames))}_{acq_name}_avg_in_PAM50.nii.gz")
+        os.makedirs(os.path.dirname(fname_tsnr_avg),exist_ok=True)
 
+        if not os.path.exists(fname_tsnr_avg) or redo:
+            print(fname_tsnr_avg)
+            for i,ID in enumerate(IDs):
+                tsnr_path=self.first_level_dir.format("tsnr",ID)
+                tsnr_basename=tsnr_fnames[i].split("moco")[0]
+                fname_tsnr_in_template=glob.glob(tsnr_basename + "moco_tsnr_in_PAM50.nii.gz")[0]
+
+                nii_roi = self.count_roi_in_template(tsnr_fnames[i],
+                                                     ID, 
+                                                     acq_name,
+                                                     seg_fnames[i],
+                                                     warp_fnames[i],
+                                                     fname_template,
+                                                     redo)
+
+                nii_tsnr = nib.load(fname_tsnr_in_template)
+                data_tsnr += nii_tsnr.get_fdata()
             
+                if data_count_id is None:
+                    data_count_id = nii_roi.get_fdata()
+                else:
+                    data_count_id += nii_roi.get_fdata()
+
+            # Average
+            data_tsnr_avg = np.divide(data_tsnr, data_count_id, out=np.zeros_like(data_tsnr), where=data_count_id != 0)
+            
+            nii_tsnr_avg = nib.Nifti1Image(data_tsnr_avg, affine=nii_tsnr.affine,
+                                                    header=nii_tsnr.header)
+                                                    
+            nib.save(nii_tsnr_avg, fname_tsnr_avg)
+
+        return fname_tsnr_avg
+    
+    def count_roi_in_template(self,fname_tnsr, ID, tag, fname_seg, fname_warp_from_func_to_template,
+                          fname_template, redo):
+        fname_ones_in_func = os.path.join(os.path.dirname(fname_tnsr), f"sub-{ID}_{tag}_ones.nii.gz")
+        fname_ones_in_template = os.path.join(os.path.dirname(fname_tnsr), f"sub-{ID}_{tag}_ones_in_PAM50.nii.gz")
+        if not os.path.exists(fname_ones_in_func) or redo:
+            nii_tmp = nib.load(fname_seg)
+            data_ones = np.ones_like(nii_tmp.get_fdata())
+            nii_ones = nib.Nifti1Image(data_ones, affine=nii_tmp.affine, header=nii_tmp.header)
+            nib.save(nii_ones, fname_ones_in_func)
+
+        if not os.path.exists(fname_ones_in_template) or redo:
+            cmd_coreg = f"sct_apply_transfo -i {fname_ones_in_func} -d {fname_template} -w {fname_warp_from_func_to_template} -o {fname_ones_in_template}"
+            os.system(cmd_coreg)
+        nii_roi = nib.load(fname_ones_in_template)
+        return nii_roi

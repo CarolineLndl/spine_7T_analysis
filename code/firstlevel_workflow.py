@@ -85,6 +85,9 @@ print("")
 #------ I.1 Select files 
 norm_mask=[]
 for ID_nb, ID in enumerate(IDs):
+    print(ID)
+    if ID=="090":
+        continue 
     print("", flush=True)
     print(f'=== First level start for :  {ID} ===', flush=True)
 
@@ -209,6 +212,8 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
 #------------------------------------------------------------------
 i_fnames_by_runs = []
 for ID in IDs:
+    if ID=="090":
+        continue
     #Check i their is multiple run for this participant
     i_fnames_runs=[]
     for task_name in config["design_exp"]["task_names"]:
@@ -227,9 +232,9 @@ for ID in IDs:
                 else:
                     run_name=""
                 i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format("glm",ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
-                 
+                
     i_fnames_by_runs.append(i_fnames_runs)
-    
+
 #To be implemented
 #postprocess.plot_first_level_maps(i_fnames=i_fnames_by_runs,
  #                                         output_fname=os.path.join(fig_task_dir, F"first_level_by_runs_n{len(i_fnames_by_runs)}.png"),
@@ -254,6 +259,34 @@ tsnr_ana=postprocess.TSNR_main(config, IDs, redo)
 tsnr_ana.generate_tsnr_maps_and_csv()
 
 # Calculate the mean within common mask
+for acq_name in config["design_exp"]["acq_names"]:
+    tsnr_id_fname=[]
+    cord_seg_file=[]
+    warp_file=[]
+    for ID in IDs:
+        i_fnames_runs=[]
+        tsnr_path=first_level_dir.format("tsnr",ID)
+        dirs = [d for d in os.listdir(tsnr_path) if os.path.isdir(os.path.join(tsnr_path, d))]
+
+        #select rest folder if exists otherwise take motor folder
+        rest_dirs = [d for d in dirs if "rest" in d and acq_name in d]
+        if len(rest_dirs) > 0:
+            selected_dirs = rest_dirs
+        else:
+            selected_dirs = [d for d in dirs if acq_name in d]
+        
+
+        tsnr_id_fname.append(glob.glob(tsnr_path +"/"+ selected_dirs[0] + "/*_moco_tSNR.nii.gz")[0])
+        cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
+        warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
+
+    fname_avg_tsnr=tsnr_ana.generate_average_tsnr_in_pam50(
+        IDs=IDs,
+        acq_name=acq_name,
+        tsnr_fnames=tsnr_id_fname,
+        seg_fnames=cord_seg_file,
+        warp_fnames=warp_file)
+    print(fname_avg_tsnr)
 
 print("=== tSNR script Done ===", flush=True)
 print("===================================", flush=True)
