@@ -204,3 +204,11 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
 #------------------------------------------------------------------
 #------ III. Compute tSNR
 #------------------------------------------------------------------
+print("=== tSNR script Start ===", flush=True)
+print("Participant(s) included : ", IDs, flush=True)
+print("===================================", flush=True)
+print("")
+
+# TSNR figure
+tsnr_ana=postprocess.TSNR_main(config, IDs, redo)
+tsnr_ana.generate_tsnr_maps_and_csv()
