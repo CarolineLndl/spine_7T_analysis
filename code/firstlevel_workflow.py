@@ -168,6 +168,7 @@ for ID_nb, ID in enumerate(IDs):
     
     print(f'=== First level done for : {ID} ===', flush=True)
     print("=========================================", flush=True)
+    print("")
 
 
 #------------------------------------------------------------------
@@ -212,3 +213,7 @@ print("")
 # TSNR figure
 tsnr_ana=postprocess.TSNR_main(config, IDs, redo)
 tsnr_ana.generate_tsnr_maps_and_csv()
+
+print("=== tSNR scriptDone ===", flush=True)
+print("===================================", flush=True)
+print("")
