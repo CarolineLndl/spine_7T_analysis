@@ -101,7 +101,6 @@ for ID_nb, ID in enumerate(IDs):
                     run_name=""
 
                 denoised_fmri=glob.glob(os.path.join(denoising_dir.format(ID ), tag, config["denoising"]["denoised_dir"],"*"+run_name+"*_nostd_s.nii.gz"))[0]
-                print(os.path.join(preprocessing_dir.format(ID), 'func',tag, config["preprocess_f"]["func_seg"].format(ID,tag,"")))
                 cord_seg_file = glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',tag, config["preprocess_f"]["func_seg"].format(ID,tag,"")))[0]
                 warp_file = os.path.join(preprocessing_dir.format(ID), 'func', tag, f"sub-{ID}_{tag}_from-func_to_PAM50_mode-image_xfm.nii.gz")
 
@@ -175,9 +174,9 @@ for ID_nb, ID in enumerate(IDs):
 #------------------------------------------------------------------
 #------ II. Extract the commun mask for all participants and tasks
 #------------------------------------------------------------------
-first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
-common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
-cropped_PAM50_fname = os.path.join(first_level_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz")
+glm_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"].format("glm",""))
+common_mask_fname = os.path.join(glm_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
+cropped_PAM50_fname = os.path.join(glm_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz")
 
 if not os.path.exists(cropped_PAM50_fname) or redo:
     norm_mask_data = [nib.as_closest_canonical(nib.load(f)).get_fdata() for f in norm_mask]
@@ -186,7 +185,7 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
     # Compute common mask (n-1)---
     sum_mask = np.sum(norm_mask_data, axis=0)
     common_mask_data = (sum_mask >= n_files-3).astype(np.uint8)
-    common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
+    common_mask_fname = os.path.join(glm_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
     common_mask_img = nib.Nifti1Image(common_mask_data, affine=nib.load(norm_mask[0]).affine)
     common_mask_img.to_filename(common_mask_fname)
     common_mask_data = common_mask_img.get_fdata()
@@ -201,75 +200,5 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
     pam50_fname = os.path.join(path_code, "template", config["PAM50_cord"])
     cmd = f"fslroi {pam50_fname} {cropped_PAM50_fname} 0 -1 0 -1 {z_min} {z_size}"
     os.system(cmd)
-
-#------------------------------------------------------------------
-#------ III.  Plot first level results: shimBase vs. shimSlice
-#------------------------------------------------------------------
-# --- Select stat map files ---
-i_fnames=[]
-for task_name in config["design_exp"]["task_names"]:
-    for acq_name in config["design_exp"]["acq_names"]:
-        tag="task-" + task_name + "_acq-" + acq_name
-        for ID in IDs:
-            # define the run name if multiple runs exist    
-            raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
-            func_file = raw_func[0]# take only the first run
-            match = re.search(r"_?(run-\d+)", func_file)
-            run_name = match.group(1) if match else ""  # extract run number if exists
-            i_fnames.append(glob.glob(os.path.join(first_level_dir.format(ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
-
-# --- Group by participant ID ---
-subject_files = defaultdict(list)
-for f in i_fnames:
-    sub_id = os.path.basename(f).split("_")[0]
-    subject_files[sub_id].append(f)
-
-# --- Keep only first two maps per subject as pairs ---
-i_fnames_pairs = []
-for sub_id in sorted(subject_files.keys()):
-    pair = subject_files[sub_id][:2]  # take first two files
-    if len(pair) == 2:
-        i_fnames_pairs.append(pair)
-
-
-output_dir=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "task")
-
-#-----------------------------------------------------------------------------
-#------ III.  Plot first level results: shimSlice # 1 vs. shimSlice #2
-#----------------------------------------------------------------------------
-# --- Select stat map files ---
-
-i_fnames_by_runs = []
-for ID in IDs:
-    #Check i their is multiple run for this participant
-    i_fnames_runs=[]
-    for task_name in config["design_exp"]["task_names"]:
-        for acq_name in config["design_exp"]["acq_names"]:
-            tag="task-" + task_name + "_acq-" + acq_name
-            raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
-            if len(raw_func)==2 and tag=="task-motor_acq-shimSlice+3mm":
-                for fname in raw_func:
-                    match = re.search(r"_?(run-\d+)", fname)
-                    run_name = match.group(1)
-                    i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format(ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
-            else:
-                match = re.search(r"_?(run-\d+)", raw_func[0])
-                if match:
-                    run_name=match.group(1)
-                else:
-                    run_name=""
-                i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format(ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
-                 
-    i_fnames_by_runs.append(i_fnames_runs)
-
-postprocess.plot_first_level_maps(i_fnames=i_fnames_by_runs,
-                                          output_fname=os.path.join(output_dir, F"first_level_by_runs_n{len(i_fnames_by_runs)}.png"),
-                                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                          mask_fname=cropped_PAM50_fname,
-                                          titles=["shimBase","shimSlice","shimSlice"],
-                                         #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
-                                          task_name=tag,
-                                          verbose=True,
-                                           redo=redo)
 
 

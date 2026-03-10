@@ -37,7 +37,7 @@
     "norm_dir":"",
     "smoothed_dir":""},
 
-"first_level":{"dir":"derivatives/processing/first_level/sub-{}/"},
+"first_level":{"dir":"derivatives/processing/first_level/{}/sub-{}/"},
 "second_level":{"dir":"derivatives/processing/second_level/{}/"},
 
 "figures_dir":{"main_dir":"derivatives/processing/figures/"},

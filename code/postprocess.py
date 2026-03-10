@@ -52,8 +52,8 @@ class Postprocess_main:
 
         # Create directories -------------------------------------------------------------------------------------
         for ID in self.participant_IDs:
-            ID_first_level_dir=self.first_level_dir.format(ID)
-            os.makedirs(ID_first_level_dir, exist_ok=True)
+            ID_glm_dir=self.first_level_dir.format('glm',ID)
+            os.makedirs(ID_glm_dir, exist_ok=True)
 
             # Create a folder for each task in participant folder
             if "design_exp" in self.config.keys():
@@ -63,7 +63,7 @@ class Postprocess_main:
                         for task_name in self.config["design_exp"]['task_names']:
                             for acq_name in self.config["design_exp"]['acq_names']:
                                 tag="task-" + task_name + "_acq-" + acq_name
-                                os.makedirs(ID_first_level_dir + tag ,exist_ok=True)
+                                os.makedirs(ID_glm_dir + tag ,exist_ok=True)
         
 
 
@@ -109,7 +109,7 @@ class Postprocess_main:
         else:
             run_tag="_" + run_name
         # --- Define directories and load files -----------------------------------------------------------
-        first_level_dir = self.first_level_dir.format(ID) + task_name + "/"
+        first_level_dir = self.first_level_dir.format("glm",ID) + task_name + "/"
         os.makedirs(first_level_dir, exist_ok=True)
 
         df_events = pd.read_csv(events_file, sep="\t") # Load event file
@@ -515,7 +515,7 @@ class Postprocess_main:
         y_min, y_max = y0 - crop_y, y0 + crop_y
             
         crop_data = statmap_data[x_min:x_max, y_min:y_max, :]
-        z_slice = 296#np.argmax(np.nanmax(crop_data, axis=(0, 1)))  # max over x and z, returns y index
+        z_slice = 310#np.argmax(np.nanmax(crop_data, axis=(0, 1)))  # max over x and z, returns y index
         axi_slice = crop_data[:, :, z_slice]
         axi_slice = np.where(axi_slice > stat_min, axi_slice, np.nan)
         axi_slice=axi_slice.T
