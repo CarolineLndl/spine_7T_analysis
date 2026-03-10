@@ -108,7 +108,7 @@ for task_name in config["design_exp"]["task_names"]:
                                                             task_name=tag,
                                                             run_name="",
                                                             parametric=False,
-                                                            n_perm=500,
+                                                            n_perm=10000,
                                                             vox_thr=0.01,
                                                             redo=redo,
                                                             verbose=verbose)
