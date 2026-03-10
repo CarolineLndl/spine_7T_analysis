@@ -4,7 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 import nibabel as nib
-import matplotlib.pyplot as plt
+import pingouin as pg
 
 # nilearn
 from nilearn.plotting import plot_design_matrix
@@ -13,13 +13,6 @@ from nilearn.glm.second_level import SecondLevelModel
 from nilearn.glm.second_level import non_parametric_inference
 from nilearn.image import resample_to_img
 from nilearn.image import smooth_img
-
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from preprocess import Preprocess_main, Preprocess_Sc
-from nibabel.processing import resample_from_to
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-import matplotlib
-import pingouin as pg
 
 from utils import compute_tsnr_map, extract_mean_within_mask
 #####################################################

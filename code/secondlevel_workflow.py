@@ -119,6 +119,8 @@ for task_name in config["design_exp"]["task_names"]:
         tag="task-" + task_name + "_acq-" + acq_name
         os.makedirs(second_level_dir.format(tag), exist_ok=True)
         for ID in IDs:
+            if ID=="090":
+                continue
             # define the run name if multiple runs exist
             raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
 
@@ -163,6 +165,8 @@ i_fnames_by_runs = []
 tag="task-motor_acq-shimSlice+3mm"
 IDs_2runs=[]
 for ID in IDs:
+    if ID=="090":
+        continue
     raw_func = sorted(glob.glob(os.path.join( config["raw_dir"], f"sub-{ID}", "func", f"sub-{ID}_{tag}_*bold.nii.gz")))
     
     # Only keep participants with 2 runs
