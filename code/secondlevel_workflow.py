@@ -58,6 +58,7 @@ import postprocess, preprocess
 
 postprocess=postprocess.Postprocess_main(config,IDs=IDs)
 preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
+tsnr_ana=postprocess.TSNR_main(config, IDs, redo)
 
 # initialize directories
 preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["main_dir"])
@@ -67,6 +68,38 @@ main_fig_dir = os.path.join(config["raw_dir"], "derivatives/processing/figures/"
 fig_task_dir = os.path.join(main_fig_dir, "task")
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 second_level_dir = os.path.join(config["raw_dir"], config["second_level"]["dir"])
+
+#------------------------------------------------------------------
+#------ Compute average tSNR
+#------------------------------------------------------------------
+for acq_name in config["design_exp"]["acq_names"]:
+    tsnr_id_fname=[]
+    cord_seg_file=[]
+    warp_file=[]
+    for ID in IDs:
+        i_fnames_runs=[]
+        tsnr_path=first_level_dir.format("tsnr",ID)
+        dirs = [d for d in os.listdir(tsnr_path) if os.path.isdir(os.path.join(tsnr_path, d))]
+
+        #select rest folder if exists otherwise take motor folder
+        rest_dirs = [d for d in dirs if "rest" in d and acq_name in d]
+        if len(rest_dirs) > 0:
+            selected_dirs = rest_dirs
+        else:
+            selected_dirs = [d for d in dirs if acq_name in d]
+        
+
+        tsnr_id_fname.append(glob.glob(tsnr_path +"/"+ selected_dirs[0] + "/*_moco_tSNR.nii.gz")[0])
+        cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
+        warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
+
+    fname_avg_tsnr=tsnr_ana.generate_average_tsnr_in_pam50(
+        IDs=IDs,
+        acq_name=acq_name,
+        tsnr_fnames=tsnr_id_fname,
+        seg_fnames=cord_seg_file,
+        warp_fnames=warp_file)
+    print(fname_avg_tsnr)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
@@ -114,23 +147,6 @@ for task_name in config["design_exp"]["task_names"]:
         print(f'=== Second level done for : {tag} ===', flush=True)
         print("=========================================", flush=True)
         
-#------------------------------------------------------------------
-#------ Second level plots
-#------------------------------------------------------------------
-# select the second level files
-i_fnames_pair=[]
-for task_name in config["design_exp"]["task_names"]:
-    for acq_name in config["design_exp"]["acq_names"]:
-        tag="task-" + task_name + "_acq-" + acq_name
-        i_fnames_pair.append(os.path.join(second_level_dir.format(tag),f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
-
-output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "task")
-postprocess.plot_second_level_maps(i_fnames_pair=i_fnames_pair, 
-                                   output_dir=output_fig,
-                                   stat_min=2.3, 
-                                   stat_max=6,
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
                                    
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 

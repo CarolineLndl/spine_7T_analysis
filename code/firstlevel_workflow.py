@@ -73,8 +73,25 @@ fig_tsnr_dir = os.path.join(main_fig_dir, "tsnr")
 os.makedirs(main_fig_dir, exist_ok=True)
 os.makedirs(fig_task_dir, exist_ok=True)
 os.makedirs(fig_tsnr_dir, exist_ok=True)
+
 #------------------------------------------------------------------
-#------ I. Run First level
+#------ I. Compute tSNR
+#------------------------------------------------------------------
+print("=== tSNR script Start ===", flush=True)
+print("Participant(s) included : ", IDs, flush=True)
+print("===================================", flush=True)
+print("")
+
+# Compute individual level
+tsnr_ana=postprocess.TSNR_main(config, IDs)
+tsnr_ana.generate_tsnr_maps_and_csv()
+
+print("=== tSNR script Done ===", flush=True)
+print("===================================", flush=True)
+print("")
+
+#------------------------------------------------------------------
+#------ II. Run First level
 #------------------------------------------------------------------
 print("")
 print("=== First level analysis script Start ===", flush=True)
@@ -175,8 +192,6 @@ for ID_nb, ID in enumerate(IDs):
     print("=========================================", flush=True)
     print("")
 
-    #------ I.4 Normalization 
-
 #------------------------------------------------------------------
 #------ II. Extract the commun mask for all participants and tasks
 #------------------------------------------------------------------
@@ -246,48 +261,3 @@ for ID in IDs:
        #                                   verbose=True,
         #                                   redo=redo)
 
-#------------------------------------------------------------------
-#------ IV. Compute tSNR
-#------------------------------------------------------------------
-print("=== tSNR script Start ===", flush=True)
-print("Participant(s) included : ", IDs, flush=True)
-print("===================================", flush=True)
-print("")
-
-# Compute individual level
-tsnr_ana=postprocess.TSNR_main(config, IDs, redo)
-tsnr_ana.generate_tsnr_maps_and_csv()
-
-# Calculate the mean within common mask
-for acq_name in config["design_exp"]["acq_names"]:
-    tsnr_id_fname=[]
-    cord_seg_file=[]
-    warp_file=[]
-    for ID in IDs:
-        i_fnames_runs=[]
-        tsnr_path=first_level_dir.format("tsnr",ID)
-        dirs = [d for d in os.listdir(tsnr_path) if os.path.isdir(os.path.join(tsnr_path, d))]
-
-        #select rest folder if exists otherwise take motor folder
-        rest_dirs = [d for d in dirs if "rest" in d and acq_name in d]
-        if len(rest_dirs) > 0:
-            selected_dirs = rest_dirs
-        else:
-            selected_dirs = [d for d in dirs if acq_name in d]
-        
-
-        tsnr_id_fname.append(glob.glob(tsnr_path +"/"+ selected_dirs[0] + "/*_moco_tSNR.nii.gz")[0])
-        cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
-        warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
-
-    fname_avg_tsnr=tsnr_ana.generate_average_tsnr_in_pam50(
-        IDs=IDs,
-        acq_name=acq_name,
-        tsnr_fnames=tsnr_id_fname,
-        seg_fnames=cord_seg_file,
-        warp_fnames=warp_file)
-    print(fname_avg_tsnr)
-
-print("=== tSNR script Done ===", flush=True)
-print("===================================", flush=True)
-print("")
