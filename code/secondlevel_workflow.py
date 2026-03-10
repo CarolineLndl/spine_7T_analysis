@@ -1,14 +1,11 @@
     #!/usr/bin/env python
 # coding: utf-8
 
-# # Spinal cord fMRI denoising 
-
-# @ author of the script: Caroline Landelle, caroline.landelle@mcgill.ca // landelle.caroline@gmail.com
+# # Spinal cord fMRI second level
 #
-# Description: This workflow provides code for first level analyses 
-# I. Run first level analysis for each subject and task
-# II. Normalize the resulting stat maps to PAM50 template space
-#
+# Description: This workflow provides code for second level analyses 
+# I. Run second level glm analysis for each subject and task
+# II. Run ICC analyses
 #------------------------------------------------------------------
 #------ Initialization
 #------------------------------------------------------------------
@@ -187,9 +184,6 @@ output_dir=second_level_dir.format("icc_shimBase_shimSlice")
 os.makedirs(output_dir, exist_ok=True)
 i_fnames_by_runs = []
 
-
-
-
 for ID in IDs_2runs:
     i_fnames_runs = []
     for acq_name in config["design_exp"]["acq_names"]:
@@ -203,7 +197,15 @@ for ID in IDs_2runs:
     
     i_fnames_by_runs.append(i_fnames_runs)
 
-icc_maps=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
+icc_maps,icc_maps_s=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir,  mask_file=mask, threshold=0)
+postprocess.plot_ICC_maps(i_fname=icc_maps,
+                          output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
+                          cmap="turbo",
+                          stat_min=0.1,
+                          stat_max=0.9,
+                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
+
 print("", flush=True)
 print(f'=== ICC between sliceShim aand sliceBase  done', flush=True)
 print("=========================================", flush=True)
