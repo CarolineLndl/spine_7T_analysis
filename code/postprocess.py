@@ -330,7 +330,7 @@ class Postprocess_main:
                 sm.set_array([])
 
                 cbar = fig.colorbar(sm, cax=inner_ax)
-                cbar.set_label('z-score', fontsize=5, labelpad=1.5)
+                cbar.set_label('z-score (uncorr)', fontsize=5, labelpad=1.5)
                 cbar.ax.yaxis.set_label_position('left')  #
                 cbar.ax.set_yticks([])
                 cbar.ax.text(1.2, -0.2, f"{stat_min:.1f}", fontsize=4.5, va='center', ha='right', color='black', transform=cbar.ax.transAxes)
