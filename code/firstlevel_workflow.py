@@ -19,7 +19,6 @@ from nilearn.glm import threshold_stats_img
 import nibabel as nib
 import numpy as np
 from collections import defaultdict
-import pingouin as pg
 
 # Get the environment variable PATH_CODE
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,7 +59,7 @@ if tasks != [""]:
 sys.path.append(path_code + "/code/") # Change this line according to your directory
 import postprocess, preprocess
 
-postprocess=postprocess.Postprocess_main(config,IDs=IDs)
+glm_ana=postprocess.GLM_main(config,IDs=IDs)
 preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
 
 # initialize directories
@@ -114,7 +113,7 @@ for ID_nb, ID in enumerate(IDs):
                 events_file=glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*{run_name}*events.tsv'))[0]
 
                 #------ I.2 Run first level GLM
-                stat_maps=postprocess.run_first_level_glm(ID=ID,
+                stat_maps=glm_ana.run_first_level_glm(ID=ID,
                                                           i_fname=denoised_fmri,
                                                           events_file=events_file,
                                                           mask_file=cord_seg_file,
@@ -202,3 +201,6 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
     os.system(cmd)
 
 
+#------------------------------------------------------------------
+#------ III. Compute tSNR
+#------------------------------------------------------------------
