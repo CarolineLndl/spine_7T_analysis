@@ -66,11 +66,13 @@ preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
 preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["main_dir"])
 denoising_dir= os.path.join(config["raw_dir"], config["denoising"]["dir"])
 manual_dir = os.path.join(config["raw_dir"], config["manual_dir"])
-main_fig_dir = os.path.join(config["raw_dir"], "derivatives/processing/figures/")#os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"])
+first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
+main_fig_dir = os.path.join(config["raw_dir"], "derivatives/processing/figures/")
 fig_task_dir = os.path.join(main_fig_dir, "task")
+fig_tsnr_dir = os.path.join(main_fig_dir, "tsnr")
 os.makedirs(main_fig_dir, exist_ok=True)
 os.makedirs(fig_task_dir, exist_ok=True)
-
+os.makedirs(fig_tsnr_dir, exist_ok=True)
 #------------------------------------------------------------------
 #------ I. Run First level
 #------------------------------------------------------------------
@@ -170,6 +172,7 @@ for ID_nb, ID in enumerate(IDs):
     print("=========================================", flush=True)
     print("")
 
+    #------ I.4 Normalization 
 
 #------------------------------------------------------------------
 #------ II. Extract the commun mask for all participants and tasks
@@ -201,19 +204,57 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
     cmd = f"fslroi {pam50_fname} {cropped_PAM50_fname} 0 -1 0 -1 {z_min} {z_size}"
     os.system(cmd)
 
+#------------------------------------------------------------------
+#------ III.  Plot first level results: shimBase vs. shimSlice
+#------------------------------------------------------------------
+i_fnames_by_runs = []
+for ID in IDs:
+    #Check i their is multiple run for this participant
+    i_fnames_runs=[]
+    for task_name in config["design_exp"]["task_names"]:
+        for acq_name in config["design_exp"]["acq_names"]:
+            tag="task-" + task_name + "_acq-" + acq_name
+            raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
+            if len(raw_func)==2 and tag=="task-motor_acq-shimSlice+3mm":
+                for fname in raw_func:
+                    match = re.search(r"_?(run-\d+)", fname)
+                    run_name = match.group(1)
+                    i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format("glm",ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
+            else:
+                match = re.search(r"_?(run-\d+)", raw_func[0])
+                if match:
+                    run_name=match.group(1)
+                else:
+                    run_name=""
+                i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format("glm",ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
+                 
+    i_fnames_by_runs.append(i_fnames_runs)
+    
+#To be implemented
+#postprocess.plot_first_level_maps(i_fnames=i_fnames_by_runs,
+ #                                         output_fname=os.path.join(fig_task_dir, F"first_level_by_runs_n{len(i_fnames_by_runs)}.png"),
+  #                                        background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+   #                                       mask_fname=cropped_PAM50_fname,
+    #                                      titles=["shimBase","shimSlice","shimSlice"],
+     #                                    #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
+      #                                    task_name=tag,
+       #                                   verbose=True,
+        #                                   redo=redo)
 
 #------------------------------------------------------------------
-#------ III. Compute tSNR
+#------ IV. Compute tSNR
 #------------------------------------------------------------------
 print("=== tSNR script Start ===", flush=True)
 print("Participant(s) included : ", IDs, flush=True)
 print("===================================", flush=True)
 print("")
 
-# TSNR figure
+# Compute individual level
 tsnr_ana=postprocess.TSNR_main(config, IDs, redo)
 tsnr_ana.generate_tsnr_maps_and_csv()
 
-print("=== tSNR scriptDone ===", flush=True)
+# Calculate the mean within common mask
+
+print("=== tSNR script Done ===", flush=True)
 print("===================================", flush=True)
 print("")
