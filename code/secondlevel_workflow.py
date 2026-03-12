@@ -147,7 +147,7 @@ for task_name in config["design_exp"]["task_names"]:
         print(f'=== Second level done for : {tag} ===', flush=True)
         print("=========================================", flush=True)
         
-                                   
+                                  
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------
@@ -175,13 +175,13 @@ for ID in IDs:
     for fname in raw_func:
         run_name = re.search(r"_?(run-\d+)", fname).group(1)
         stat_map = glob.glob(os.path.join(
-            first_level_dir.format(ID), tag, f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"
+            first_level_dir.format("glm",ID), tag, f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"
         ))[0]
         i_fnames_runs.append(stat_map)
     
     i_fnames_by_runs.append(i_fnames_runs)
 
-icc_maps,icc_maps_s=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
+icc_maps,icc_maps_s=glm_ana.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
 #postprocess.plot_ICC_maps(i_fname=icc_maps,
  #                         output_fname=output_fig + "/icc_run-01_run-02.png",
   #                        cmap="turbo",
@@ -210,12 +210,12 @@ for ID in IDs_2runs:
         match = re.search(r"_?(run-\d+)", raw_func[0])
         run_name = match.group(1) if match else ""
 
-        stat_map = glob.glob(os.path.join(first_level_dir.format(ID), tag, f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0]
+        stat_map = glob.glob(os.path.join(first_level_dir.format("glm",ID), tag, f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0]
         i_fnames_runs.append(stat_map)
     
     i_fnames_by_runs.append(i_fnames_runs)
 
-icc_maps,icc_maps_s=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir,  mask_file=mask, threshold=0)
+icc_maps,icc_maps_s=glm_ana.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir,  mask_file=mask, threshold=0)
 #postprocess.plot_ICC_maps(i_fname=icc_maps,
  #                         output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
   #                        cmap="turbo",
