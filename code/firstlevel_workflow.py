@@ -60,6 +60,7 @@ sys.path.append(path_code + "/code/") # Change this line according to your direc
 import postprocess, preprocess
 import figures
 
+
 glm_ana=postprocess.GLM_main(config,IDs=IDs)
 preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
 figures=figures.Figures_main(config, IDs=IDs)
@@ -70,11 +71,8 @@ denoising_dir= os.path.join(config["raw_dir"], config["denoising"]["dir"])
 manual_dir = os.path.join(config["raw_dir"], config["manual_dir"])
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 main_fig_dir = os.path.join(config["raw_dir"], "derivatives/processing/figures/")
-fig_task_dir = os.path.join(main_fig_dir, "task")
-fig_tsnr_dir = os.path.join(main_fig_dir, "tsnr")
+fig_dir = os.path.join(main_fig_dir, "/firtlevel/")
 os.makedirs(main_fig_dir, exist_ok=True)
-os.makedirs(fig_task_dir, exist_ok=True)
-os.makedirs(fig_tsnr_dir, exist_ok=True)
 
 #------------------------------------------------------------------
 #------ I. Compute tSNR
@@ -85,7 +83,7 @@ print("===================================", flush=True)
 print("")
 
 # Compute individual level
-tsnr_ana=postprocess.TSNR_main(config, IDs)
+tsnr_ana=postprocess.TSNR_main(config, IDs,redo)
 tsnr_ana.generate_tsnr_maps_and_csv()
 
 print("=== tSNR script Done ===", flush=True)
@@ -93,7 +91,13 @@ print("===================================", flush=True)
 print("")
 
 #------------------------------------------------------------------
-#------ II. Run First level
+#------ II. Plot EPI comparison
+#------------------------------------------------------------------
+#fig_epi_comparison = figures.EpiComparison(config, IDs, redo)
+#fig_epi_comparison.create_figure(show_avg=False)
+
+#------------------------------------------------------------------
+#------ III. Run First level
 #------------------------------------------------------------------
 print("")
 print("=== First level analysis script Start ===", flush=True)
@@ -252,9 +256,8 @@ for ID in IDs:
                 
     i_fnames_by_runs.append(i_fnames_runs)
 
-#To be implemented
-postprocess.plot_first_level_maps(i_fnames=i_fnames_by_runs,
-                                         output_fname=os.path.join(fig_task_dir, F"first_level_by_runs_n{len(i_fnames_by_runs)}.png"),
+figures.plot_first_level_maps(i_fnames=i_fnames_by_runs,
+                                         output_fname=os.path.join(main_fig_dir, F"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
                                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                           mask_fname=cropped_PAM50_fname,
                                           titles=["shimBase","shimSlice","shimSlice"],

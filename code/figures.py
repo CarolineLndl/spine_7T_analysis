@@ -52,8 +52,7 @@ class Figures_main:
 
         os.makedirs(self.first_level_fig,exist_ok=True)
         os.makedirs(self.second_level_fig,exist_ok=True)
-        
-    
+     
     def plot_first_level_maps(self, i_fnames=None, output_fname=None,titles=["shimBase","shimSlice",""],cmap="autumn",stat_min=1.6, stat_max=4,background_fname=None,mask_fname=None, underlay_fname=None,task_name=None,plot_mip=True, verbose=True, redo=False,n_cols=5):
         """
         Plot first-level statistical maps for multiple participants and contrasts in a grid layout.
@@ -256,7 +255,6 @@ class Figures_main:
         else:
             print("First level figure already exists, put redo=True to regenerate the figure")
 
-    
     def plot_ICC_maps(self, i_fname=None, output_fname=None,stat_min=0.5, stat_max=0.9,background_fname=None,cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
         """
         Plot second-level statistical maps for two maps.
