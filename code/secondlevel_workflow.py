@@ -56,9 +56,9 @@ if tasks != [""]:
 sys.path.append(path_code + "/code/") # Change this line according to your directory
 import postprocess, preprocess
 
-postprocess=postprocess.Postprocess_main(config,IDs=IDs)
+glm_ana=postprocess.GLM_main(config,IDs=IDs)
 preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
-tsnr_ana=postprocess.TSNR_main(config, IDs, redo)
+tsnr_ana=postprocess.TSNR_main(config, IDs,redo)
 
 # initialize directories
 preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["main_dir"])
@@ -99,7 +99,6 @@ for acq_name in config["design_exp"]["acq_names"]:
         tsnr_fnames=tsnr_id_fname,
         seg_fnames=cord_seg_file,
         warp_fnames=warp_file)
-    print(fname_avg_tsnr)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
@@ -131,11 +130,10 @@ for task_name in config["design_exp"]["task_names"]:
             match = re.search(r"_?(run-\d+)", func_file)
             run_name = match.group(1) if match else ""
             
-
             # find the corresponding first-level file
-            i_fnames.append(glob.glob(os.path.join(first_level_dir.format(ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
+            i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
 
-        z_map_file=postprocess.run_second_level_glm(i_fnames=i_fnames,
+        z_map_file=glm_ana.run_second_level_glm(i_fnames=i_fnames,
                                                             mask_fname=common_mask_fname,
                                                             task_name=tag,
                                                             run_name="",
@@ -184,13 +182,13 @@ for ID in IDs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 icc_maps,icc_maps_s=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
-postprocess.plot_ICC_maps(i_fname=icc_maps,
-                          output_fname=output_fig + "/icc_run-01_run-02.png",
-                          cmap="turbo",
-                          stat_min=0.1,
-                          stat_max=0.9,
-                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
+#postprocess.plot_ICC_maps(i_fname=icc_maps,
+ #                         output_fname=output_fig + "/icc_run-01_run-02.png",
+  #                        cmap="turbo",
+   #                       stat_min=0.1,
+    #                      stat_max=0.9,
+     #                     background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+      #                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
 
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
@@ -218,13 +216,13 @@ for ID in IDs_2runs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 icc_maps,icc_maps_s=postprocess.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir,  mask_file=mask, threshold=0)
-postprocess.plot_ICC_maps(i_fname=icc_maps,
-                          output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
-                          cmap="turbo",
-                          stat_min=0.1,
-                          stat_max=0.9,
-                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
+#postprocess.plot_ICC_maps(i_fname=icc_maps,
+ #                         output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
+  #                        cmap="turbo",
+   #                       stat_min=0.1,
+    #                      stat_max=0.9,
+     #                     background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+      #                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
 
 print("", flush=True)
 print(f'=== ICC between sliceShim aand sliceBase  done', flush=True)
