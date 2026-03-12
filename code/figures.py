@@ -255,7 +255,7 @@ class Figures_main:
         else:
             print("First level figure already exists, put redo=True to regenerate the figure")
     
-    def plot_two_maps(self, i_fnames_pair=None, output_fname=None,stat_min=2.3, stat_max=5,background_fname=None,cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
+    def plot_two_maps(self, i_fnames_pair=None, output_fname=None,stat_min=2.3, stat_max=5,background_fname=None,cbar_label='t-value',cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
         """
         Plot second-level statistical maps for two maps.
 
@@ -367,7 +367,8 @@ class Figures_main:
             stat_min=stat_min,
             stat_max=stat_max,
             cmap=cmap,
-            left=0.03, bottom=0.05, width=0.02, height=0.15
+            label=cbar_label,
+            left=0.05, bottom=0.05, width=0.04, height=0.15
         )
 
         # -- plot spinal levels at the very left side
@@ -592,9 +593,9 @@ class Figures_main:
 
         return ax_levels, ax_levels_txt
 
-    def plot_colorbar(self, fig, stat_min, stat_max, cmap='autumn',
+    def plot_colorbar(self, fig, stat_min, stat_max, cmap='autumn', 
                   left=0.03, bottom=0.05, width=0.02, height=0.15,
-                  label='t-score', fontsize=6):
+                  label='t-value', fontsize=6):
         """
         Plot a shared colorbar on a figure.
 
@@ -633,9 +634,9 @@ class Figures_main:
         cbar = fig.colorbar(sm, cax=cbar_ax)
         cbar.set_label(label, fontsize=fontsize, labelpad=1.5, fontweight='bold', fontname="Arial")
         cbar.ax.set_yticks([])
-        cbar.ax.text(1.35, 1.1, f"{stat_min:.1f}", fontsize=fontsize, va='center', ha='right',
+        cbar.ax.text(1.5, 1.1, f"{stat_max:.1f}", fontsize=fontsize, va='center', ha='right',
                     color='black', transform=cbar.ax.transAxes)
-        cbar.ax.text(1.35, -0.12, f"{stat_max:.1f}", fontsize=fontsize, va='center', ha='right',
+        cbar.ax.text(1.5, -0.12, f"{stat_min:.1f}", fontsize=fontsize, va='center', ha='right',
                     color='black', transform=cbar.ax.transAxes)
         cbar.ax.set_frame_on(False)
 

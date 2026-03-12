@@ -70,6 +70,8 @@ fig_task_dir = os.path.join(main_fig_dir, "task")
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 second_level_dir = os.path.join(config["raw_dir"], config["second_level"]["dir"])
 
+mask = os.path.join(first_level_dir.format('glm',"").split("sub")[0], "common_mask_PAM50.nii.gz")
+
 #------------------------------------------------------------------
 #------ Compute average tSNR
 #------------------------------------------------------------------
@@ -99,7 +101,8 @@ for acq_name in config["design_exp"]["acq_names"]:
         acq_name=acq_name,
         tsnr_fnames=tsnr_id_fname,
         seg_fnames=cord_seg_file,
-        warp_fnames=warp_file)
+        warp_fnames=warp_file,
+        fname_mask=mask)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
@@ -165,21 +168,37 @@ figures.plot_two_maps(i_fnames_pair=i_fnames_glm_pair,
                                    output_fname=f"{output_fig}/n{len(IDs)}_glm_avg_map.png",
                                    stat_min=2.3, 
                                    stat_max=6,
+                                   cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
 
 figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair, 
                                    output_fname=f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png",
                                    stat_min=5, 
-                                   stat_max=15,
+                                   stat_max=18,
                                    cmap='turbo',
+                                   cbar_label='tSNR',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]))
-                      
+
+# --- Combine side by side ---
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+fig, axes = plt.subplots(1, 2, figsize=(4, 3.5))
+for ax, fname, title in zip(axes,
+                             [f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png", f"{output_fig}/n{len(IDs)}_glm_avg_map.png"],
+                             ["tSNR", "GLM"]):
+    img = mpimg.imread(fname)
+    ax.imshow(img)
+    ax.axis("off")
+    ax.set_title(title, fontsize=7, fontweight='bold', fontname="Arial")
+
+plt.tight_layout()
+plt.savefig(f"{output_fig}/n{len(IDs)}_combined_map.png", dpi=300)
+plt.close()
+
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------
-# work only on participant with two shimSlice runs
-mask = os.path.join(first_level_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz")
 
 # ----------  betwen shimSlice run01 vs run02 ---
 print("", flush=True)

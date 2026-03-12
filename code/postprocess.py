@@ -503,119 +503,7 @@ class TSNR_main:
 
         return list_baseline_tsnr, list_slicewise_tsnr
 
-    def _generate_average_tsnr_in_pam50(self):
-        print("=== Generate tSNR in PAM50 figure ===", flush=True)
-
-        fname_template = os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"])
-        nii_template = nib.load(fname_template)
-        data_tsnr_baseline = np.zeros_like(nii_template.get_fdata(), dtype=float)
-        data_tsnr_slicewise = np.zeros_like(nii_template.get_fdata(), dtype=float)
-        data_count_subjects_baseline = None
-        data_count_subjects_slicewise = None
-
-        fname_tsnr_baseline_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_baseline_avg_in_PAM50.nii.gz")
-        fname_tsnr_slicewise_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_slicewise_avg_in_PAM50.nii.gz")
-
-        name_baseline = [a for a in self.config["design_exp"]["acq_names"] if a.find("Base") != -1][0]
-        name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if a.find("Slice") != -1][0]
-
-        for ID in self.IDs:
-            path_task_baseline = os.path.join(
-                self.path_fig_data,
-                f"sub-{ID}",
-                f"task-rest_acq-{name_baseline}")
-
-            if os.path.exists(path_task_baseline):
-                task = 'rest'
-            else:
-                task = 'motor'
-                path_task_baseline = os.path.join(
-                    self.path_fig_data,
-                    f"sub-{ID}",
-                    f"task-motor_acq-{name_baseline}")
-
-            fname_tsnr_in_template_baseline = os.path.join(
-                path_task_baseline,
-                f"sub-{ID}_task-{task}_acq-{name_baseline}*_bold_moco_tsnr_in_PAM50.nii.gz"
-            )
-            if len(glob.glob(fname_tsnr_in_template_baseline)) != 1:
-                raise RuntimeError(
-                    f"0 or more than 1 tSNR in template files found: {glob.glob(fname_tsnr_in_template_baseline)}")
-            fname_tsnr_in_template_baseline = glob.glob(fname_tsnr_in_template_baseline)[0]
-
-            path_task_slicewise = os.path.join(
-                self.path_fig_data,
-                f"sub-{ID}",
-                f"task-{task}_acq-{name_slicewise}")
-            fname_tsnr_in_template_slicewise = os.path.join(
-                path_task_slicewise,
-                f"sub-{ID}_task-{task}_acq-{name_slicewise}*_bold_moco_tsnr_in_PAM50.nii.gz"
-            )
-            if len(glob.glob(fname_tsnr_in_template_slicewise)) != 1:
-                raise RuntimeError(
-                    f"0 or more than 1 tSNR in template files found: {glob.glob(fname_tsnr_in_template_slicewise)}")
-            fname_tsnr_in_template_slicewise = glob.glob(fname_tsnr_in_template_slicewise)[0]
-
-            fname_seg_b, fname_warp_from_func_to_template, _ = get_fname_seg_and_warps(ID, task, name_baseline, self.config)
-            nii_roi_baseline = count_roi_in_template(os.path.join(self.path_fig_data, f"sub-{ID}", f"task-{task}_acq-{name_baseline}"),
-                                                     ID, task, name_baseline,
-                                                     fname_seg_b, fname_warp_from_func_to_template, fname_template,
-                                                     self.redo)
-            fname_seg_s, fname_warp_from_func_to_template, _ = get_fname_seg_and_warps(ID, task, name_slicewise, self.config)
-            nii_roi_slicewise = count_roi_in_template(os.path.join(self.path_fig_data, f"sub-{ID}", f"task-{task}_acq-{name_slicewise}"),
-                                                     ID, task, name_slicewise,
-                                                     fname_seg_s, fname_warp_from_func_to_template, fname_template,
-                                                     self.redo)
-
-            nii_baseline = nib.load(fname_tsnr_in_template_baseline)
-            data_tsnr_baseline += nii_baseline.get_fdata()
-            nii_slicewise = nib.load(fname_tsnr_in_template_slicewise)
-            data_tsnr_slicewise += nii_slicewise.get_fdata()
-            if data_count_subjects_baseline is None:
-                data_count_subjects_baseline = nii_roi_baseline.get_fdata()
-                data_count_subjects_slicewise = nii_roi_slicewise.get_fdata()
-            else:
-                data_count_subjects_baseline += nii_roi_baseline.get_fdata()
-                data_count_subjects_slicewise += nii_roi_slicewise.get_fdata()
-
-        # Average
-        data_tsnr_baseline_avg = np.divide(data_tsnr_baseline, data_count_subjects_baseline, out=np.zeros_like(data_tsnr_baseline), where=data_count_subjects_baseline != 0)
-        data_tsnr_slicewise_avg = np.divide(data_tsnr_slicewise, data_count_subjects_slicewise, out=np.zeros_like(data_tsnr_slicewise), where=data_count_subjects_slicewise != 0)
-
-        nii_tsnr_baseline_avg = nib.Nifti1Image(data_tsnr_baseline_avg, affine=nii_baseline.affine,
-                                                header=nii_baseline.header)
-        nib.save(nii_tsnr_baseline_avg, fname_tsnr_baseline_avg)
-
-        nii_tsnr_slicewise_avg = nib.Nifti1Image(data_tsnr_slicewise_avg, affine=nii_slicewise.affine,
-                                                 header=nii_slicewise.header)
-        nib.save(nii_tsnr_slicewise_avg, fname_tsnr_slicewise_avg)
-    
-    def find_moco_for_tsnr_calculation(self, ID, task, acq_name):
-
-        files = glob.glob(os.path.join(
-            self.config["raw_dir"],
-            self.config["preprocess_dir"]["main_dir"].format(ID),
-            "func",
-            f"task-{task}_acq-{acq_name}",
-            "sct_fmri_moco",
-            f"sub-{ID}_task-{task}_acq-{acq_name}*_bold_moco.nii.gz"
-        ))
-        if len(files) == 0:
-            return None
-        elif len(files) == 1:
-            selected_file = files[0]
-        else:
-            max_volumes = 0
-            selected_file = None
-            for f in files:
-                img = nib.load(f)
-                n_volumes = img.shape[3]
-                if n_volumes > max_volumes:
-                    max_volumes = n_volumes
-                    selected_file = f
-        return selected_file
-
-    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None, redo=False):
+    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=False):
         
         if IDs is None:
             raise ValueError("Please provide a list of participant IDs (e.g., _.stc(IDs=['A001','A002'])).")
@@ -634,6 +522,13 @@ class TSNR_main:
         
         fname_tsnr_avg = os.path.join(self.path_tsnr_inTemplate, f"tsnr_n{str(len(tsnr_fnames))}_{acq_name}_avg_in_PAM50.nii.gz")
         os.makedirs(os.path.dirname(fname_tsnr_avg),exist_ok=True)
+
+        # --- Load mask if provided ---
+        if fname_mask is not None:
+            nii_mask = nib.load(fname_mask)
+            mask_data = nib.as_closest_canonical(nii_mask).get_fdata().astype(bool)
+        else:
+            mask_data = None
 
         if not os.path.exists(fname_tsnr_avg) or redo:
             print(fname_tsnr_avg)
@@ -660,6 +555,12 @@ class TSNR_main:
 
             # Average
             data_tsnr_avg = np.divide(data_tsnr, data_count_id, out=np.zeros_like(data_tsnr), where=data_count_id != 0)
+
+            # --- Apply mask if provided ---
+            if mask_data is not None:
+                if mask_data.shape != data_tsnr_avg.shape:
+                    raise ValueError(f"Mask shape {mask_data.shape} does not match data shape {data_tsnr_avg.shape}")
+                data_tsnr_avg[~mask_data] = 0
             
             nii_tsnr_avg = nib.Nifti1Image(data_tsnr_avg, affine=nii_tsnr.affine,
                                                     header=nii_tsnr.header)
