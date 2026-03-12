@@ -196,6 +196,14 @@ plt.tight_layout()
 plt.savefig(f"{output_fig}/n{len(IDs)}_combined_map.png", dpi=300)
 plt.close()
 
+## Next steps:
+# extract and save the number of voxels within each group maps
+# extract and save the t-value distribution
+# generate bar plot
+# generate distribtuion plot
+# generate tsnr violin plot
+# plot the three at the right side of the previous figure
+
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------

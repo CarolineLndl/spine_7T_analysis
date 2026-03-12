@@ -532,6 +532,60 @@ class Figures_main:
         plt.savefig(out_file, dpi=300)
         plt.close(fig)
 
+    def plot_voxel_count_bar(self, num_voxels_list,output_fname=None,colors=None, maps_name=None,figsize=(1.5, 2),width=0.5, alpha=0.7):
+        """
+        Plot a bar chart of suprathreshold voxel counts as a standalone figure.
+
+        Parameters
+        ----------
+        num_voxels_list : list
+            List of suprathreshold voxel counts per map
+        output_fname : str, optional
+            Path to save the figure. If None, figure is returned without saving.
+        colors : list, optional
+            Bar colors (default: ["#43BA8C", "#F5AD27"])
+        maps_name : list, optional
+            X-tick labels (default: ["baseShim", "SliceShim"])
+        figsize : tuple
+            Figure size (default: (1.5, 2))
+        width : float
+            Bar width (default: 0.5)
+        alpha : float
+            Bar transparency (default: 0.7)
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+        """
+        if colors is None:
+            colors = ["#43BA8C", "#F5AD27"]
+        if maps_name is None:
+            maps_name = ["baseShim", "SliceShim"]
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        ax.bar(range(len(num_voxels_list)), num_voxels_list,
+            color=colors, width=width, alpha=alpha)
+        ax.set_xticks(range(len(num_voxels_list)))
+        ax.set_xticklabels(
+            [maps_name[i] for i in range(len(num_voxels_list))],
+            rotation=45, fontsize=6, fontweight='bold', fontname="Arial")
+        ax.set_ylabel("# voxels", fontsize=6, fontweight='bold', fontname="Arial")
+        ax.tick_params(axis='y', labelsize=6)
+        ax.yaxis.set_label_coords(-0.9, 0.5)
+        ax.tick_params(axis='y', which='both', pad=2)
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        plt.tight_layout()
+
+        if output_fname is not None:
+            plt.savefig(output_fname, dpi=300)
+            plt.close(fig)
+        
+        return fig
+
     def plot_spinal_levels(self, fig, gs, ax_cor, cor_slice_shape, z_min, z_max):
         """
         Plot spinal level color bands and segmental labels on a figure.
