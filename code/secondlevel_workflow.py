@@ -54,11 +54,12 @@ if tasks != [""]:
 
 #Import scripts
 sys.path.append(path_code + "/code/") # Change this line according to your directory
-import postprocess, preprocess
+import postprocess, preprocess, figures
 
 glm_ana=postprocess.GLM_main(config,IDs=IDs)
 preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
 tsnr_ana=postprocess.TSNR_main(config, IDs,redo)
+figures=figures.Figures_main(config, IDs=IDs)
 
 # initialize directories
 preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["main_dir"])
@@ -146,8 +147,34 @@ for task_name in config["design_exp"]["task_names"]:
         print("")
         print(f'=== Second level done for : {tag} ===', flush=True)
         print("=========================================", flush=True)
-        
-                                  
+
+#------------------------------------------------------------------
+#------ Plot group level tSNR and GLM
+#------------------------------------------------------------------
+# select the second level files
+i_fnames_glm_pair=[];i_fnames_tSNR_pair=[]
+for task_name in config["design_exp"]["task_names"]:
+    for acq_name in config["design_exp"]["acq_names"]:
+        tag="task-" + task_name + "_acq-" + acq_name
+        i_fnames_glm_pair.append(os.path.join(second_level_dir.format(tag),f"n{len(IDs)-1}_{tag}_t_clustercorrected.nii.gz"))
+        i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("tsnr"),f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
+
+output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
+
+figures.plot_two_maps(i_fnames_pair=i_fnames_glm_pair, 
+                                   output_fname=f"{output_fig}/n{len(IDs)}_glm_avg_map.png",
+                                   stat_min=2.3, 
+                                   stat_max=6,
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
+
+figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair, 
+                                   output_fname=f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png",
+                                   stat_min=5, 
+                                   stat_max=15,
+                                   cmap='turbo',
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]))
+                      
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------
