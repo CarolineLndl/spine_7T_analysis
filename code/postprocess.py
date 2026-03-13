@@ -401,7 +401,7 @@ class GLM_main:
                 "max": np.max(threshold_values),
             }])
 
-            df_values = pd.DataFrame([{"voxels_values": threshold_values}])
+            df_values = pd.DataFrame({"voxels_values": threshold_values})
     
             df_metrics.to_csv(o_fname + "_metrics.csv", index=False)
             df_values.to_csv(o_fname + "_values.csv", index=False)
