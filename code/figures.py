@@ -695,3 +695,61 @@ class Figures_main:
         cbar.ax.set_frame_on(False)
 
         return cbar
+    
+    def bar_plot(self,csv_pair=None,metric="nonzero_voxels",output_fname=None, colors = None, maps_name=None, figsize=(1.8, 2.5),width=0.5, alpha=0.7):
+        """
+        Plot a bar chart of metrics loaded from a pair of CSV files.
+
+        Parameters
+        ----------
+        csv_pair : list
+            List of two CSV filenames (output of extract_metrics)
+        output_fname : str, optional
+            Path to save the figure. If None, figure is returned without saving.
+        colors : list, optional
+            Bar colors (default: ["#43BA8C", "#F5AD27"])
+        maps_name : list, optional
+            X-tick labels (default: ["shimBase", "shimSlice"])
+        figsize : tuple
+            Figure size (default: (1.5, 2))
+        width : float
+            Bar width (default: 0.5)
+        alpha : float
+            Bar transparency (default: 0.7)
+        metric : str
+            Column name to plot from the CSV (default: "nonzero_voxels")
+
+        """
+        if csv_pair is None:
+            raise ValueError("Please provide a list of two CSV filenames.")
+    
+        if colors is None:
+            colors = ["#43BA8C", "#F5AD27"]
+        if maps_name is None:
+            maps_name = ["shimBase", "shimSlice"]
+
+        # --- Load metric from each CSV ---
+        values = [pd.read_csv(f)[metric].values[0] for f in csv_pair]
+
+        # --- Plot ---
+        fig, ax = plt.subplots(figsize=figsize)
+        fig.subplots_adjust(left=0.2, right=0.95, top=0.95, bottom=0.25)
+
+        ax.bar(range(len(values)), values, color=colors, width=0.5, alpha=alpha)
+        ax.set_xticks(range(len(values)))
+        ax.set_xticklabels(
+            [maps_name[i] for i in range(len(values))],
+            rotation=45, fontsize=6, fontweight='bold', fontname="Arial")
+        ax.set_ylabel("# significant voxels", fontsize=6, fontweight='bold', fontname="Arial")
+        ax.tick_params(axis='y', labelsize=6)
+        #ax.yaxis.set_label_coords(-0.9, 0.5)
+        ax.tick_params(axis='y', which='both', pad=2)
+        ax.spines['left'].set_position(('outward', 10))
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        plt.tight_layout()
+
+        if output_fname is not None:
+            plt.savefig(output_fname, dpi=300)
+            plt.close(fig)

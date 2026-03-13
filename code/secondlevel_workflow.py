@@ -116,7 +116,8 @@ print("")
 
 common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
 
-for task_name in config["design_exp"]["task_names"]:
+metrics_csv_pair=[]
+for task_name in ["motor"]:
     for acq_name in config["design_exp"]["acq_names"]:
         i_fnames=[]
         tag="task-" + task_name + "_acq-" + acq_name
@@ -148,6 +149,7 @@ for task_name in config["design_exp"]["task_names"]:
                                                             verbose=verbose)
 
         metrics_csv,values_csv=glm_ana.extract_metrics(i_fname=z_map_file,threshold=0)
+        metrics_csv_pair.append(metrics_csv)
                                                 
         print("")
         print(f'=== Second level done for : {tag} ===', flush=True)
@@ -165,6 +167,8 @@ for task_name in config["design_exp"]["task_names"]:
         i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("tsnr"),f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
 
 output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
+
+figures.bar_plot(csv_pair=metrics_csv_pair,output_fname=f"{output_fig}/n{len(IDs)}_glm_nb_vox.png")
 
 figures.plot_two_maps(i_fnames_pair=i_fnames_glm_pair, 
                                    output_fname=f"{output_fig}/n{len(IDs)}_glm_avg_map.png",
