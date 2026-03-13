@@ -368,6 +368,44 @@ class GLM_main:
         
         return stat_map_file
 
+    def extract_metrics(self,i_fname=None,threshold=None,o_fname=None,verbose=True,redo=False):
+        
+        if i_fname is None:
+            raise ValueError("Please provide the filename of the input image.")
+        
+        if o_fname==None:
+            o_fname=i_fname.split('.')[0]
+        
+        
+        num_voxels_list=[];values_list=[]
+
+        # --- Load ---
+        img = nib.as_closest_canonical(nib.load(i_fname))
+        data = img.get_fdata()
+
+        # --- Extract metrics ---
+        if threshold==None:
+            num_voxels_list=np.nan(data)
+        else:
+            num_voxels_list=np.nan(data > threshold)
+
+        #extact values
+        values_list=data.flatten()
+
+        df_metrics = pd.DataFrame([{
+            "total_voxels": len(values_list),
+            "nonzero_voxels": len(num_voxels_list),
+            "mean": np.mean(num_voxels_list),
+            "std": np.std(num_voxels_list),
+            "min": np.min(num_voxels_list),
+            "max": np.max(num_voxels_list),
+        }])
+        
+        df_metrics.to_csv(o_fname + "_metrics.csv", index=False)
+        values_list.to_csv(o_fname + "_values.csv", index=False)
+
+        return o_fname + "_metrics.csv", o_fname + "_values.csv"
+
 class TSNR_main:
     # ------------------------------------------------------------------
     # ------ Compute tSNR
