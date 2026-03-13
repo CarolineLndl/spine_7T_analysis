@@ -147,6 +147,8 @@ for task_name in config["design_exp"]["task_names"]:
                                                             redo=redo,
                                                             verbose=verbose)
 
+        metrics_csv,values_csv=glm_ana.extract_metrics(i_fname=z_map_file,threshold=0)
+                                                
         print("")
         print(f'=== Second level done for : {tag} ===', flush=True)
         print("=========================================", flush=True)

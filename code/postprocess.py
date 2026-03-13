@@ -366,9 +366,9 @@ class GLM_main:
                 t_masked_img.to_filename(stat_map_file+ 't_clustercorrected.nii.gz')
 
         
-        return stat_map_file
+        return stat_map_file+ 't_clustercorrected.nii.gz'
 
-    def extract_metrics(self,i_fname=None,threshold=None,o_fname=None,verbose=True,redo=False):
+    def extract_metrics(self,i_fname=None,threshold=0,o_fname=None,redo=False):
         
         if i_fname is None:
             raise ValueError("Please provide the filename of the input image.")
@@ -376,35 +376,37 @@ class GLM_main:
         if o_fname==None:
             o_fname=i_fname.split('.')[0]
         
-        
-        num_voxels_list=[];values_list=[]
+        fname_metrics = o_fname + "_metrics.csv"
+        fname_values  = o_fname + "_values.csv"
 
-        # --- Load ---
-        img = nib.as_closest_canonical(nib.load(i_fname))
-        data = img.get_fdata()
+        if not os.path.exists(fname_metrics) or not os.path.exists(fname_values) or redo:
 
-        # --- Extract metrics ---
-        if threshold==None:
-            num_voxels_list=np.nan(data)
-        else:
-            num_voxels_list=np.nan(data > threshold)
+            num_voxels_list=[];values_list=[]
 
-        #extact values
-        values_list=data.flatten()
+            # --- Load ---
+            img = nib.as_closest_canonical(nib.load(i_fname))
+            data = img.get_fdata()
 
-        df_metrics = pd.DataFrame([{
-            "total_voxels": len(values_list),
-            "nonzero_voxels": len(num_voxels_list),
-            "mean": np.mean(num_voxels_list),
-            "std": np.std(num_voxels_list),
-            "min": np.min(num_voxels_list),
-            "max": np.max(num_voxels_list),
-        }])
-        
-        df_metrics.to_csv(o_fname + "_metrics.csv", index=False)
-        values_list.to_csv(o_fname + "_values.csv", index=False)
+            # --- Extract metrics ---
+            all_values=data.flatten()
+            threshold_values=all_values[all_values > threshold]
+            
 
-        return o_fname + "_metrics.csv", o_fname + "_values.csv"
+            df_metrics = pd.DataFrame([{
+                "total_voxels": len(threshold_values),
+                "nonzero_voxels": len(threshold_values),
+                "mean": np.mean(threshold_values),
+                "std": np.std(threshold_values),
+                "min": np.min(threshold_values),
+                "max": np.max(threshold_values),
+            }])
+
+            df_values = pd.DataFrame([{"voxels_values": threshold_values}])
+    
+            df_metrics.to_csv(o_fname + "_metrics.csv", index=False)
+            df_values.to_csv(o_fname + "_values.csv", index=False)
+
+        return fname_metrics, fname_values
 
 class TSNR_main:
     # ------------------------------------------------------------------
