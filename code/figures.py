@@ -19,6 +19,7 @@ from nibabel.processing import resample_from_to
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+import seaborn as sns
 
 #####################################################
 class Figures_main:
@@ -756,3 +757,144 @@ class Figures_main:
         if output_fname is not None:
             plt.savefig(output_fname, dpi=300)
             plt.close(fig)
+
+    def boxplots(self, csv_file=None,output_fname=None, x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=7, ymax=17,height=3,aspect=0.8, invers_axes=False,indiv=False, group=False, redo=False):
+        '''
+        Create matrix of correlation boxplots with matching box outline and whisker colors.
+        '''
+
+        if not os.path.exists(output_fname) or redo:
+            df = pd.read_csv(csv_file)
+
+            # Set style and default palette if not provided
+            if color is None:
+                color = ["#F5AD27","#43BA8C"]
+            if hue is None:
+                hue = x_data
+                hue_order = x_order
+            
+            if invers_axes:
+                x_data_f=y_data
+                y_data_f=x_data
+            else:
+                x_data_f=x_data
+                y_data_f=y_data
+
+
+            # Create the boxplot
+            g = sns.catplot(
+                    x=x_data_f, 
+                    y=y_data_f, 
+                    data=df,  
+                    kind="box",  
+                    linewidth=3, 
+                    #color=color,  # Use the provided palette
+                    medianprops=dict(color="white"),  # Set median line color to white
+                    #hue=None,
+                    order=x_order, 
+                    #hue_order=None,
+                    fliersize=0,  # Remove outliers' markers
+                    height=height,
+                    aspect=aspect,
+                    legend=plot_legend
+                )
+
+
+
+            # Apply custom outline and whisker colors to match the palette
+            for ax in g.axes.flat:
+                # Add a horizontal line at y=0
+                if invers_axes:
+                    ax.axvline(0, color='grey', linestyle='--', linewidth=1)
+                else:
+                    ax.axhline(0, color='grey', linestyle='--', linewidth=1)
+                # Change whisker colors
+                
+                
+
+                for i, box in enumerate(ax.patches):  # Access the box patches
+                    category = df[x_data_f].unique()[i % len(df[x_data_f].unique())]  # Use modulus to loop over categories
+                    color_index = list(df[x_data_f].unique()).index(category)  # Get the index of the category in the unique list
+                    
+                    # Set the box color and alpha
+                    box.set_color(color[color_index])  # Set box color
+                    box.set_alpha(0.2)  # Set alpha for the box
+                    
+                    whisker_lines = ax.lines[i * 6:i * 6 + 2]  # Whiskers are the first two lines for each box
+                    for whisker in whisker_lines:
+                        whisker.set_color(color[color_index])  # Set the whisker color
+                        whisker.set_alpha(0.7)  # Set alpha for whiskers
+
+                    cap_lines = ax.lines[i * 6 + 2:i * 6 + 4]  # Caps are the next two lines for each box
+                    for cap in cap_lines:
+                        cap.set_color(color[color_index])  # Set the cap color
+                        cap.set_alpha(0.7)
+
+
+                    # Loop through each box and set outline color
+                
+                    # Get the current category for the box
+                    category = df[x_data_f].unique()[i % len(df[x_data_f].unique())]  # Use modulus to loop over categories
+                    color_index = list(df[x_data_f].unique()).index(category)  # Get the index of the category in the unique list
+
+                    # Set the box color
+                    box.set_color(color[color_index])  # Set box color
+                    
+                    # Get the bounding box by extracting the vertices of the path
+                    vertices = box.get_path().vertices
+                    x_pos = vertices[:, 0].min()  # Minimum x value
+                    y_pos = vertices[:, 1].min()  # Minimum y value
+                    box_width = vertices[:, 0].max() - x_pos  # Width
+                    box_height = vertices[:, 1].max() - y_pos  # Height
+
+                    # Create a new outline with lower alpha for the edge
+                    outline = plt.Rectangle(
+                        (x_pos, y_pos),  # Position as a tuple
+                        box_width,  # Width
+                        box_height,  # Height
+                        fill=False,  # No fill for the outline
+                        edgecolor=color[color_index],  # Same color as the box
+                        lw=5,  # Line width
+                        alpha=0.7  # Set alpha for transparency of the outline
+                    )
+                    ax.add_patch(outline)  # Add the outline to the axis
+
+
+
+            # Add individual points if requested
+            if indiv_values:
+                sns.stripplot(
+                    x=x_data_f, 
+                    y=y_data_f, 
+                    data=df, 
+                    hue=hue, 
+                    hue_order=hue_order,
+                    size=8,
+                    palette=indiv_color if indiv_color else color,
+                    #palette=palette, 
+                    linewidth=1, 
+                    alpha=0.3,
+                    edgecolor='white',
+                    jitter=0.25
+                )
+
+            # Set axis labels and formatting
+            #g.set_axis_labels(" ", "corr", fontsize=12, fontweight='bold')
+            
+            if output_tag:
+                g.set(title=output_tag)
+
+            if invers_axes:
+                g.set(xlim=(ymin, ymax))
+            else:
+                g.set(ylim=(ymin, ymax))
+            sns.despine(offset=30, trim=True)
+            if plot_legend:
+                g.add_legend()
+            else:
+                plt.legend([],[], frameon=False)
+            
+            # Save the figure if requested
+            
+            plt.savefig(output_fname, dpi=300, transparent=True)
+            plt.close()
