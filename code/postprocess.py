@@ -434,7 +434,7 @@ class TSNR_main:
         self.fname_tsnr_metrics = os.path.join(self.path_tsnr, "tsnr_metrics.csv")
 
     def generate_tsnr_maps_and_csv(self):
-        df_tsnr = pd.DataFrame(columns=["ID", "task", "acq", "tsnr_mean"])
+        df_tsnr = pd.DataFrame(columns=["ID", "task", "acq", "Mean tSNR"])
 
         print("=== Compute tSNR map on longest moco neighbour run ===", flush=True)
         # Find the minimum number of volumes across all runs to standardize tSNR calculation
@@ -499,9 +499,9 @@ class TSNR_main:
 
                         tsnr_mean = extract_mean_within_mask(fname_tsnr, fname_mask)
                         if len(df_tsnr) == 0:
-                            df_tsnr = pd.DataFrame([[ID, task, acq_name, tsnr_mean]], columns=df_tsnr.columns)
+                            df_tsnr = pd.DataFrame([[ID, task, acq_name.split("+")[0], tsnr_mean]], columns=df_tsnr.columns)
                         df_tsnr = pd.concat(
-                            [pd.DataFrame([[ID, task, acq_name, tsnr_mean]], columns=df_tsnr.columns), df_tsnr],
+                            [pd.DataFrame([[ID, task, acq_name.split("+")[0], tsnr_mean]], columns=df_tsnr.columns), df_tsnr],
                             ignore_index=True)
 
         # Keep only 'rest' rows for IDs that have both 'motor' and 'rest'
