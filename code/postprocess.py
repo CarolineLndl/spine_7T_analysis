@@ -14,6 +14,8 @@ from nilearn.glm.second_level import non_parametric_inference
 from nilearn.image import resample_to_img
 from nilearn.image import smooth_img
 
+from scipy import stats
+
 from utils import compute_tsnr_map, extract_mean_within_mask
 #####################################################
 class GLM_main:
@@ -434,7 +436,7 @@ class TSNR_main:
         self.fname_tsnr_metrics = os.path.join(self.path_tsnr, "tsnr_metrics.csv")
 
     def generate_tsnr_maps_and_csv(self):
-        df_tsnr = pd.DataFrame(columns=["ID", "task", "acq", "Mean tSNR"])
+        df_tsnr = pd.DataFrame(columns=["IDs", "task", "acq", "Mean tSNR"])
 
         print("=== Compute tSNR map on longest moco neighbour run ===", flush=True)
         # Find the minimum number of volumes across all runs to standardize tSNR calculation
@@ -506,15 +508,17 @@ class TSNR_main:
 
         # Keep only 'rest' rows for IDs that have both 'motor' and 'rest'
         if not os.path.exists(self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv"):
-            ids_with_both = df_tsnr.groupby('ID')['task'].apply(
+            ids_with_both = df_tsnr.groupby('IDs')['task'].apply(
                 lambda x: set(['motor', 'rest']).issubset(set(x))
             )
             ids_with_both = ids_with_both[ids_with_both].index
-            df_reduced = df_tsnr[~((df_tsnr['ID'].isin(ids_with_both)) & (df_tsnr['task'] == 'motor'))]
+            df_reduced = df_tsnr[~((df_tsnr['IDs'].isin(ids_with_both)) & (df_tsnr['task'] == 'motor'))]
             df_reduced.to_csv(self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv", index=False)
 
         if not os.path.exists(self.fname_tsnr_metrics):
             df_tsnr.to_csv(self.fname_tsnr_metrics, index=False)
+
+        self.pair_ttest(csv_file=self.fname_tsnr_metrics,redo=self.redo)
         
 
     def _extract_baseline_and_slicewise_tsnr_from_csv(self):
@@ -659,3 +663,57 @@ class TSNR_main:
                     max_volumes = n_volumes
                     selected_file = f
         return selected_file
+    
+    def pair_ttest(self, df=None, csv_file=None, output_fname=None,index='IDs', value_col='Mean tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase',task_filter=None, task_col='task', redo=False):
+
+        if output_fname==None and csv_file:
+            output_fname=csv_file.split('.csv')[0] + "_stats.csv"
+
+        if not os.path.exists(output_fname) or redo:
+            if csv_file:
+                df = pd.read_csv(csv_file)
+
+            # Filter by task if requested
+            if task_filter:
+                df = df[df[task_col] == task_filter]
+
+            # Pivot to get one column per condition
+            df_pivot = df.pivot_table(index=index, columns=acq_col, values=value_col)
+            df_pivot = df_pivot.dropna(subset=[cond1, cond2])
+
+            # Paired t-test
+            t_stat, p_value = stats.ttest_rel(df_pivot[cond1], df_pivot[cond2])
+            degrees_of_freedom = len(df_pivot) - 1
+
+            # Significance stars
+            if p_value < 0.001:
+                stars = '***'
+            elif p_value < 0.01:
+                stars = '**'
+            elif p_value < 0.05:
+                stars = '*'
+            else:
+                stars = 'ns'
+
+            # Build results dataframe
+            results = pd.DataFrame([{
+                'cond1'         : cond1,
+                'cond2'         : cond2,
+                'task_filter'   : task_filter if task_filter else 'all',
+                'N_pairs'       : len(df_pivot),
+                'mean_cond1'    : df_pivot[cond1].mean(),
+                'std_cond1'     : df_pivot[cond1].std(),
+                'mean_cond2'    : df_pivot[cond2].mean(),
+                'std_cond2'     : df_pivot[cond2].std(),
+                't_stat'        : t_stat,
+                'df'            : degrees_of_freedom,
+                'p_value'       : p_value,
+                'significance'  : stars,
+            }])
+
+            results.to_csv(output_fname, index=False)
+            print(results.to_string(index=False))
+
+        return pd.read_csv(output_fname)
+
+    
