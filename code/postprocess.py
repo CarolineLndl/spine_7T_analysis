@@ -518,7 +518,7 @@ class TSNR_main:
         if not os.path.exists(self.fname_tsnr_metrics):
             df_tsnr.to_csv(self.fname_tsnr_metrics, index=False)
 
-        self.pair_ttest(csv_file=self.fname_tsnr_metrics,redo=self.redo)
+        self.pair_ttest(csv_file=self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv",redo=self.redo)
         
 
     def _extract_baseline_and_slicewise_tsnr_from_csv(self):
@@ -701,10 +701,10 @@ class TSNR_main:
                 'cond2'         : cond2,
                 'task_filter'   : task_filter if task_filter else 'all',
                 'N_pairs'       : len(df_pivot),
-                'mean_cond1'    : df_pivot[cond1].mean(),
-                'std_cond1'     : df_pivot[cond1].std(),
-                'mean_cond2'    : df_pivot[cond2].mean(),
-                'std_cond2'     : df_pivot[cond2].std(),
+                f'mean_{cond1}'    : df_pivot[cond1].mean(),
+                f'std_{cond1}'     : df_pivot[cond1].std(),
+                f'mean_{cond2}'    : df_pivot[cond2].mean(),
+                f'std_{cond2}'     : df_pivot[cond2].std(),
                 't_stat'        : t_stat,
                 'df'            : degrees_of_freedom,
                 'p_value'       : p_value,
