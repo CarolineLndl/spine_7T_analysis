@@ -52,8 +52,8 @@ if IDs == [""]:
 
     IDs = new_IDs
 
-if tasks != [""]:
-    config["design_exp"]["task_names"] = tasks
+#if tasks != [""]:
+#    config["design_exp"]["task_names"] = tasks
 
 #Import scripts
 sys.path.append(path_code + "/code/") # Change this line according to your directory
@@ -99,6 +99,7 @@ print("")
 #------------------------------------------------------------------
 #------ III. Run First level
 #------------------------------------------------------------------
+config["design_exp"]["task_names"] = ["motor"]
 print("")
 print("=== First level analysis script Start ===", flush=True)
 print("Participant(s) included : ", IDs, flush=True)

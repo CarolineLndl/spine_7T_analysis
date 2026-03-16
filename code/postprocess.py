@@ -504,7 +504,18 @@ class TSNR_main:
                             [pd.DataFrame([[ID, task, acq_name, tsnr_mean]], columns=df_tsnr.columns), df_tsnr],
                             ignore_index=True)
 
-        df_tsnr.to_csv(self.fname_tsnr_metrics, index=False)
+        # Keep only 'rest' rows for IDs that have both 'motor' and 'rest'
+        if not os.path.exists(self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv"):
+            ids_with_both = df_tsnr.groupby('ID')['task'].apply(
+                lambda x: set(['motor', 'rest']).issubset(set(x))
+            )
+            ids_with_both = ids_with_both[ids_with_both].index
+            df_reduced = df_tsnr[~((df_tsnr['ID'].isin(ids_with_both)) & (df_tsnr['task'] == 'motor'))]
+            df_reduced.to_csv(self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv", index=False)
+
+        if not os.path.exists(self.fname_tsnr_metrics):
+            df_tsnr.to_csv(self.fname_tsnr_metrics, index=False)
+        
 
     def _extract_baseline_and_slicewise_tsnr_from_csv(self):
         name_baseline = [a for a in self.config["design_exp"]["acq_names"] if a.find("Base") != -1][0]
@@ -624,3 +635,27 @@ class TSNR_main:
             os.system(cmd_coreg)
         nii_roi = nib.load(fname_ones_in_template)
         return nii_roi
+    
+    def find_moco_for_tsnr_calculation(self,ID, task, acq_name):
+        files = glob.glob(os.path.join(
+            self.config["raw_dir"],
+            self.config["preprocess_dir"]["main_dir"].format(ID),
+            "func",
+            f"task-{task}_acq-{acq_name}",
+            "sct_fmri_moco",
+            f"sub-{ID}_task-{task}_acq-{acq_name}*_bold_moco.nii.gz"
+        ))
+        if len(files) == 0:
+            return None
+        elif len(files) == 1:
+            selected_file = files[0]
+        else:
+            max_volumes = 0
+            selected_file = None
+            for f in files:
+                img = nib.load(f)
+                n_volumes = img.shape[3]
+                if n_volumes > max_volumes:
+                    max_volumes = n_volumes
+                    selected_file = f
+        return selected_file
