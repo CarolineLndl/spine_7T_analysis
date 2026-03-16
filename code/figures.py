@@ -162,15 +162,15 @@ class Figures_main:
                     if map_idx == 0:
                         x_center = 1.7 
                         y_top = 1.2   
-                        ax_cor.text(x_center, y_top, f"ID #{subj_idx + 1}", ha='center', va='bottom', fontsize=8, fontweight='black', transform=ax_cor.transAxes, fontname="Arial")
+                        ax_cor.text(x_center, y_top, f"ID #{subj_idx + 1}", ha='center', va='bottom', fontsize=8, fontweight='black', transform=ax_cor.transAxes, fontname="liberation2")
                         line_y = 1.2
                         ax_cor.hlines(y=line_y, xmin=0.15, xmax=3, colors='black', linewidth=0.8, transform=ax_cor.transAxes, clip_on=False)
         
-                        ax_cor.set_title(titles[0], color="black",  fontsize=6, fontname="Arial")
+                        ax_cor.set_title(titles[0], color="black",  fontsize=6, fontname="liberation2")
                     if map_idx == 1:
-                        ax_cor.set_title(f"{titles[1]}\nrun-01", color="black",  fontsize=6, fontname="Arial",y=0.94)
+                        ax_cor.set_title(f"{titles[1]}\nrun-01", color="black",  fontsize=6, fontname="liberation2",y=0.94)
                     if map_idx == 2 and i_fname != None:
-                        ax_cor.set_title(f"{titles[2]}\nrun-02", color="black",  fontsize=6, fontname="Arial",y=0.94)
+                        ax_cor.set_title(f"{titles[2]}\nrun-02", color="black",  fontsize=6, fontname="liberation2",y=0.94)
   
                         
 
@@ -354,7 +354,7 @@ class Figures_main:
             ax_cor.axhline(y=z_slice - z_min, color='white', linestyle='--', linewidth=0.8, alpha=0.7)
 
             if i==0:
-                ax_cor.set_title(f"shimBase", color="black", fontweight='bold', fontsize=7, fontname="Arial")
+                ax_cor.set_title(f"shimBase", color="black", fontweight='bold', fontsize=7, fontname="liberation2")
                 ax_cor.text(0.05, 0.05, "L", transform=ax_cor.transAxes, color="white", fontsize=7, ha="left", va="bottom")
                 ax_cor.text(0.95, 0.05, "R", transform=ax_cor.transAxes, color="white", fontsize=7, ha="right", va="bottom")
                 ax_axi.text(0.02, 0.5, "L", transform=ax_axi.transAxes, color="white", fontsize=7, ha="left", va="center")
@@ -363,7 +363,7 @@ class Figures_main:
                 ax_axi.text(0.5, 0.12, "P", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="bottom")
 
             else:
-                ax_cor.set_title(f"shimSlice", color="black", fontweight='bold', fontsize=7, fontname="Arial")
+                ax_cor.set_title(f"shimSlice", color="black", fontweight='bold', fontsize=7, fontname="liberation2")
 
         # -- Shared colorbar
         cbar = self.plot_colorbar(
@@ -381,8 +381,8 @@ class Figures_main:
         gs=gs,
         ax_cor=ax_cor,
         cor_slice_shape=cor_slice.shape,
-        z_min=172,
-        z_max=333
+        z_min=z_min,
+        z_max=z_max
         )
         
         out_file=os.path.join(output_fname)
@@ -488,7 +488,7 @@ class Figures_main:
         sm.set_array([])
 
         cbar = fig.colorbar(sm, cax=cbar_ax)
-        cbar.set_label('icc', fontsize=6, labelpad=1.5,fontweight='bold',fontname="Arial")
+        cbar.set_label('icc', fontsize=6, labelpad=1.5,fontweight='bold',fontname="liberation2")
         cbar.ax.set_yticks([])
         cbar.ax.text(1.35, 1.1, f"{stat_max:.1f}", fontsize=6, va='center', ha='right', color='black', transform=cbar.ax.transAxes)
         cbar.ax.text(1.35, -0.12, f"{stat_min:.1f}", fontsize=6, va='center', ha='right', color='black', transform=cbar.ax.transAxes)
@@ -526,11 +526,11 @@ class Figures_main:
         ax_levels_txt = fig.add_subplot(gs[0, 0])
         ax_levels_txt.axis("off")  # we only want labels and lines
 
-        ax_levels_txt.text(-0.24, 0.9, "C5", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.68, "C6", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.49, "C7", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.3, "C8", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.1, "T1", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
+        ax_levels_txt.text(-0.24, 0.9, "C5", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="liberation2")
+        ax_levels_txt.text(-0.24, 0.68, "C6", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="liberation2")
+        ax_levels_txt.text(-0.24, 0.49, "C7", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="liberation2")
+        ax_levels_txt.text(-0.24, 0.3, "C8", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="liberation2")
+        ax_levels_txt.text(-0.24, 0.1, "T1", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="liberation2")
 
         out_file=os.path.join(output_fname)
         plt.savefig(out_file, dpi=300)
@@ -591,11 +591,11 @@ class Figures_main:
         ax_levels_txt = fig.add_subplot(gs[0, 0])
         ax_levels_txt.axis("off")
 
-        labels = [("C5", 0.9), ("C6", 0.68), ("C7", 0.49), ("C8", 0.3), ("T1", 0.1)]
+        labels = [("C5", 0.86), ("C6", 0.63), ("C7", 0.4), ("C8", 0.18), ("", 0.1)]
         for label, y_pos in labels:
             ax_levels_txt.text(-1.3, y_pos, label, transform=ax_cor.transAxes,
                             color="black", fontsize=6, ha="center", va="center",
-                            fontweight='bold', fontname="Arial")
+                            fontweight='bold', fontname="liberation2")
 
         return ax_levels, ax_levels_txt
 
@@ -638,7 +638,7 @@ class Figures_main:
         sm.set_array([])
 
         cbar = fig.colorbar(sm, cax=cbar_ax)
-        cbar.set_label(label, fontsize=fontsize, labelpad=1.5, fontweight='bold', fontname="Arial")
+        cbar.set_label(label, fontsize=fontsize, labelpad=1.5, fontweight='bold', fontname="Heliberation2lvetica")
         cbar.ax.set_yticks([])
         cbar.ax.text(1.5, 1.1, f"{stat_max:.1f}", fontsize=fontsize, va='center', ha='right',
                     color='black', transform=cbar.ax.transAxes)
@@ -692,8 +692,8 @@ class Figures_main:
             ax.set_xticks(range(len(values)))
             ax.set_xticklabels(
                 [maps_name[i] for i in range(len(values))],
-                rotation=45, fontsize=8, fontweight='bold', fontname="Arial")
-            ax.set_ylabel("# significant voxels (GLM)", fontsize=8, fontweight='bold', fontname="Arial")
+                rotation=45, fontsize=8, fontweight='bold', fontname="liberation2")
+            ax.set_ylabel("# significant voxels (GLM)", fontsize=8, fontweight='bold', fontname="liberation2")
             ax.tick_params(axis='y', labelsize=7)
             #ax.yaxis.set_label_coords(-0.9, 0.5)
             ax.tick_params(axis='y', which='both', pad=2)
@@ -754,8 +754,8 @@ class Figures_main:
                 ax.hist(values_clean, bins=bins, color=colors[i], alpha=alpha,
                         label=maps_name[i], density=False)
 
-            ax.set_xlabel("t-value", fontsize=8, fontweight='bold', fontname="Arial")
-            ax.set_ylabel("# significant voxels (GLM)", fontsize=8, fontweight='bold', fontname="Arial")
+            ax.set_xlabel("t-value", fontsize=8, fontweight='bold', fontname="liberation2")
+            ax.set_ylabel("# significant voxels (GLM)", fontsize=8, fontweight='bold', fontname="liberation2")
             ax.tick_params(axis='both', labelsize=6)
             ax.legend(fontsize=5)
             ax.spines['top'].set_visible(False)
@@ -938,7 +938,7 @@ class Figures_main:
                         fontsize=6, color=bracket_color)
             
             ax.set_xlabel('')
-            ax.set_ylabel(y_data, fontsize=8, fontname="Arial",fontweight='bold')
+            ax.set_ylabel(y_data, fontsize=8, fontname="liberation2",fontweight='bold')
             ax.tick_params(axis='y', labelsize=5)
             
 
@@ -957,7 +957,7 @@ class Figures_main:
             
             ax.set_xticks(range(len(df[x_data_f].unique())))
             ax.set_xticklabels(x_order if x_order else df[x_data_f].unique(), 
-                   rotation=45, fontsize=8, fontweight='bold', fontname="Arial", ha='right')
+                   rotation=45, fontsize=8, fontweight='bold', fontname="liberation2", ha='right')
             
             # Save the figure if requested
             plt.tight_layout()
@@ -990,13 +990,13 @@ class Figures_main:
                     ax.text(w/1.7, -h*0.02,           # position above image
                     row1_titles[i],
                     ha='center', va='bottom',
-                    fontsize=7, fontweight='bold', fontname="Arial",
+                    fontsize=7, fontweight='bold', fontname="liberation2",
                     transform=ax.transData)  # use data coordinates
                 
                 # Panel label
                 ax.text(0, -h*0.02, f"{chr(65+i)}.",   # A, B
                 ha='left', va='bottom',
-                fontsize=8, fontweight='bold', fontname="Arial",
+                fontsize=8, fontweight='bold', fontname="liberation2",
                 transform=ax.transData)
             
 
@@ -1016,7 +1016,7 @@ class Figures_main:
                 # Panel label on outer axes
                 ax_outer.text(0, 1, f"{chr(67+i)}.",   # C, D, E
                               ha='left', va='top',
-                              fontsize=8, fontweight='bold', fontname="Arial",
+                              fontsize=8, fontweight='bold', fontname="liberation2",
                               transform=ax_outer.transAxes)
 
             fig.subplots_adjust(wspace=0.1, hspace=0.001, left=0.01, right=0.99, top=0.99, bottom=0.01)
