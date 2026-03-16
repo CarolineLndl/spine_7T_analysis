@@ -83,7 +83,7 @@ print("===================================", flush=True)
 print("")
 
 # Compute individual level
-tsnr_ana=postprocess.TSNR_main(config, IDs,redo)
+tsnr_ana=postprocess.TSNR_main(config, IDs,redo=redo)
 tsnr_ana.generate_tsnr_maps_and_csv()
 
 print("=== tSNR script Done ===", flush=True)
@@ -93,8 +93,10 @@ print("")
 #------------------------------------------------------------------
 #------ II. Plot EPI comparison
 #------------------------------------------------------------------
-#fig_epi_comparison = figures.EpiComparison(config, IDs, redo)
-#fig_epi_comparison.create_figure(show_avg=False)
+EpiComparison=postprocess.EpiComparison(config, IDs=IDs)
+for ID_nb, ID in enumerate(IDs):
+    for task_name in ["motor"]:
+        EpiComparison.create_mocomean_same_vols(ID=ID, task_name=task_name,acq_names=config["design_exp"]["acq_names"], redo=redo)
 
 #------------------------------------------------------------------
 #------ III. Run First level
@@ -109,7 +111,6 @@ print("")
 #------ I.1 Select files 
 norm_mask=[]
 for ID_nb, ID in enumerate(IDs):
-    print(ID)
     if ID=="090":
         continue 
     print("", flush=True)
@@ -258,7 +259,7 @@ for ID in IDs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 figures.plot_first_level_maps(i_fnames=i_fnames_by_runs,
-                                         output_fname=os.path.join(main_fig_dir, F"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
+                                         output_fname=os.path.join(fig_dir, F"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
                                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                           mask_fname=cropped_PAM50_fname,
                                           titles=["shimBase","shimSlice","shimSlice"],

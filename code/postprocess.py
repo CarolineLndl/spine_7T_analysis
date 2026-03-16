@@ -717,3 +717,57 @@ class TSNR_main:
         return pd.read_csv(output_fname)
 
     
+class EpiComparison:
+    def __init__(self, config, IDs):
+        self.IDs = IDs
+        self.config = config
+
+        self.first_level_dir = os.path.join(self.config["raw_dir"], self.config["first_level"]["dir"])  # directory of the derivatives data
+        self.second_level_dir= os.path.join(self.config["raw_dir"], self.config["second_level"]["dir"])
+        self.path_epi_comparison = os.path.join(self.first_level_dir.format("epi_comparison","").split("sub")[0])
+       
+        if not os.path.exists(self.path_epi_comparison):
+            os.makedirs(self.path_epi_comparison)
+
+    def create_mocomean_same_vols(self,ID=None, task_name=None,acq_names=None, redo=False):
+        
+        # Output
+        path_sub = os.path.join(self.first_level_dir.format("epi_comparison",ID))
+        os.makedirs(path_sub,exist_ok=True)
+
+        fname_func=[];fnames_moco=[];vols_all=[]
+
+        #Check if the file exists and the file with the min volume number
+        for acq_name in acq_names:
+            fname_func.append(os.path.join(path_sub, f"sub-{ID}_task-{task_name}_acq-{acq_name}_bold_moco_mean_samevols.nii.gz"))
+
+            if not os.path.exists(fname_func[0]) or not os.path.exists(fname_func[1]) or redo:
+                # select the functional image (sometime there are multiple runs)
+                fname_acq_list = sorted(glob.glob(os.path.join(self.config["raw_dir"],f"sub-{ID}","func",f"sub-{ID}_task-{task_name}_acq-{acq_name}*_bold.nii.gz" )))
+                if len(fname_acq_list) == 0:
+                    raise RuntimeError(f"No file found for sub-{ID} task-{task_name} acq-{acq_name}")
+                
+                # extract its number of volumes 
+                vols = 0
+                idx = -1
+                for i, fname in enumerate(fname_acq_list):
+                    img = nib.load(fname)
+                    n_vols = img.shape[3]
+                    if n_vols > vols:
+                        vols = n_vols
+                        idx = i
+                
+                fnames_moco.append(fname_acq_list[idx])
+                vols_all.append(vols)
+        
+        # check which acquisition has the most volumes
+        vols = min(vols_all[0], vols_all[1])
+
+        print(f"sub-{ID} task-{task_name}: shimBase+3mm has {vols_all[0]} volumes, shimSlice+3mm has {vols_all[1]} volumes", flush=True)
+        print(f"Creating moco mean with same number of volumes for sub-{ID} task-{task_name}: {vols} volumes", flush=True)
+        
+        #save the two files by including the same number of volumes
+        for i, acq_name in enumerate(acq_names):
+            img = nib.load(fnames_moco[i])
+            data = np.mean(img.get_fdata()[:, :, :, :vols], axis=3)
+            nib.save(nib.Nifti1Image(data, affine=img.affine, header=img.header),fname_func[i])
