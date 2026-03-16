@@ -106,7 +106,7 @@ for acq_name in config["design_exp"]["acq_names"]:
     output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
     fname_csv=glob.glob(tsnr_path.split("sub")[0] +  "/tsnr_metrics_reduced.csv")[0]
     stat_file=glob.glob(tsnr_path.split("sub")[0] +  "/tsnr_metrics_reduced_stats.csv")[0]
-    figures.boxplots(csv_file=fname_csv,output_fname=f"{output_fig}/n{len(IDs)}_tsnr_boxplot.png",stats_file=stat_file,x_data="acq",x_order=["shimBase","shimSlice"],indiv_values=True,y_data="Mean tSNR",redo=True)
+    box_plot=figures.boxplots(csv_file=fname_csv,output_fname=f"{output_fig}/n{len(IDs)}_tsnr_boxplot.png",stats_file=stat_file,x_data="acq",x_order=["shimBase","shimSlice"],indiv_values=True,y_data="Mean tSNR",redo=True)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
@@ -173,10 +173,10 @@ for task_name in config["design_exp"]["task_names"]:
 
 output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
-figures.bar_plot(csv_pair=metrics_csv_pair,output_fname=f"{output_fig}/n{len(IDs)}_glm_nb_vox.png")
-figures.plot_dist(csv_pair=[values_csv_pair[1],values_csv_pair[0]], maps_name = ["shimSlice","shimBase"],colors = ["#ED263F","#ADA8A8"],output_fname=f"{output_fig}/n{len(IDs)}_glm_distr.png")
+bar_plot=figures.bar_plot(csv_pair=metrics_csv_pair,output_fname=f"{output_fig}/n{len(IDs)}_glm_nb_vox.png")
+dist_plot=figures.plot_dist(csv_pair=[values_csv_pair[1],values_csv_pair[0]], maps_name = ["shimSlice","shimBase"],colors = ["#ED263F","#ADA8A8"],output_fname=f"{output_fig}/n{len(IDs)}_glm_distr.png")
 
-figures.plot_two_maps(i_fnames_pair=i_fnames_glm_pair, 
+glm_plot=figures.plot_two_maps(i_fnames_pair=i_fnames_glm_pair, 
                                    output_fname=f"{output_fig}/n{len(IDs)}_glm_avg_map.png",
                                    stat_min=2.3, 
                                    stat_max=6,
@@ -184,7 +184,7 @@ figures.plot_two_maps(i_fnames_pair=i_fnames_glm_pair,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
 
-figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair, 
+tsnr_plot=figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair, 
                                    output_fname=f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png",
                                    stat_min=5, 
                                    stat_max=18,
@@ -193,20 +193,13 @@ figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]))
 
 # --- Combine side by side ---
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
-fig, axes = plt.subplots(1, 2, figsize=(4, 3.5))
-for ax, fname, title in zip(axes,
-                             [f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png", f"{output_fig}/n{len(IDs)}_glm_avg_map.png"],
-                             ["tSNR", "GLM"]):
-    img = mpimg.imread(fname)
-    ax.imshow(img)
-    ax.axis("off")
-    ax.set_title(title, fontsize=7, fontweight='bold', fontname="Arial")
 
-plt.tight_layout()
-plt.savefig(f"{output_fig}/n{len(IDs)}_combined_map.png", dpi=300)
-plt.close()
+figures.combine_plots(output_fname=f"{output_fig}/n{len(IDs)}_combined_plots.png",
+                      row1_files=[tsnr_plot,glm_plot],
+                      row2_files=[box_plot,bar_plot,dist_plot],
+                      figsize=(3.5, 4.5), redo=True)
+
+
 
 ## Next steps:
 # plot the three at the right side of the previous figure

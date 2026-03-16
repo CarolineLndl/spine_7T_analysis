@@ -8,6 +8,7 @@ import nibabel as nib
 #matplotlib
 import matplotlib.pyplot as plt
 import matplotlib
+import matplotlib.image as mpimg
 
 # nilearn
 from nilearn.plotting import plot_design_matrix
@@ -255,6 +256,8 @@ class Figures_main:
         
         else:
             print("First level figure already exists, put redo=True to regenerate the figure")
+        
+        return output_fname
     
     def plot_two_maps(self, i_fnames_pair=None, output_fname=None,stat_min=2.3, stat_max=5,background_fname=None,cbar_label='t-value',cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
         """
@@ -304,7 +307,7 @@ class Figures_main:
 
             # --- Coronal slice ---
             x_min, x_max = 35, 105
-            z_min, z_max = 172, 333
+            z_min, z_max = 200, 333
             y_slice = np.unravel_index(np.nanargmax(statmap_data), statmap_data.shape)[1]
             
 
@@ -383,8 +386,10 @@ class Figures_main:
         )
         
         out_file=os.path.join(output_fname)
-        plt.savefig(out_file, dpi=300)
+        plt.savefig(out_file,transparent=True, dpi=300)
         plt.close(fig)
+
+        return output_fname
 
 
     def plot_ICC_maps(self, i_fname=None, output_fname=None,stat_min=0.5, stat_max=0.9,background_fname=None,cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
@@ -474,8 +479,6 @@ class Figures_main:
         ax_axi.text(0.98, 0.5, "R", transform=ax_axi.transAxes, color="white", fontsize=7, ha="right", va="center")
         ax_axi.text(0.5, 0.90, "A", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="top")
         ax_axi.text(0.5, 0.12, "P", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="bottom")
-
-
 
         # -- Shared colorbar
         
@@ -669,41 +672,43 @@ class Figures_main:
             Column name to plot from the CSV (default: "nonzero_voxels")
 
         """
-        if csv_pair is None:
-            raise ValueError("Please provide a list of two CSV filenames.")
-    
-        if colors is None:
-            colors = ["#ADA8A8","#ED263F"]
-        if maps_name is None:
-            maps_name = ["shimBase", "shimSlice"]
+        if not os.path.exists(output_fname):
+            if csv_pair is None:
+                raise ValueError("Please provide a list of two CSV filenames.")
+        
+            if colors is None:
+                colors = ["#ADA8A8","#ED263F"]
+            if maps_name is None:
+                maps_name = ["shimBase", "shimSlice"]
 
-        # --- Load metric from each CSV ---
-        values = [pd.read_csv(f)[metric].values[0] for f in csv_pair]
+            # --- Load metric from each CSV ---
+            values = [pd.read_csv(f)[metric].values[0] for f in csv_pair]
 
-        # --- Plot ---
-        fig, ax = plt.subplots(figsize=figsize)
-        fig.subplots_adjust(left=0.2, right=0.95, top=0.95, bottom=0.25)
+            # --- Plot ---
+            fig, ax = plt.subplots(figsize=figsize)
+            fig.subplots_adjust(left=0.2, right=0.95, top=0.95, bottom=0.25)
 
-        ax.bar(range(len(values)), values, color=colors, width=0.5, alpha=alpha)
-        ax.set_xticks(range(len(values)))
-        ax.set_xticklabels(
-            [maps_name[i] for i in range(len(values))],
-            rotation=45, fontsize=6, fontweight='bold', fontname="Arial")
-        ax.set_ylabel("# significant voxels", fontsize=6, fontweight='bold', fontname="Arial")
-        ax.tick_params(axis='y', labelsize=6)
-        #ax.yaxis.set_label_coords(-0.9, 0.5)
-        ax.tick_params(axis='y', which='both', pad=2)
-        ax.spines['left'].set_position(('outward', 10))
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+            ax.bar(range(len(values)), values, color=colors, width=0.5, alpha=alpha)
+            ax.set_xticks(range(len(values)))
+            ax.set_xticklabels(
+                [maps_name[i] for i in range(len(values))],
+                rotation=45, fontsize=8, fontweight='bold', fontname="Arial")
+            ax.set_ylabel("# significant voxels (GLM)", fontsize=8, fontweight='bold', fontname="Arial")
+            ax.tick_params(axis='y', labelsize=7)
+            #ax.yaxis.set_label_coords(-0.9, 0.5)
+            ax.tick_params(axis='y', which='both', pad=2)
+            ax.spines['left'].set_position(('outward', 10))
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
 
-        plt.tight_layout()
+            plt.tight_layout()
 
-        if output_fname is not None:
-            plt.savefig(output_fname, dpi=300)
+            plt.savefig(output_fname,transparent=True, dpi=300)
             plt.close(fig)
+        
+        return output_fname
 
-    def plot_dist(self, csv_pair=None,output_fname=None,colors=None, maps_name=None,bins=100,figsize=(1.8, 2.3),width=0.5, alpha=0.8):
+    def plot_dist(self, csv_pair=None,output_fname=None,colors=None, maps_name=None,bins=100,figsize=(1.8, 2.3),width=0.5, alpha=0.8, redo=False):
         """
         Plot a bar chart of suprathreshold voxel counts as a standalone figure.
 
@@ -726,39 +731,42 @@ class Figures_main:
 
         Returns
         -------
-        fig : matplotlib.figure.Figure
+        output filename
         """
-        if csv_pair is None:
-            raise ValueError("Please provide a list of two CSV filenames.")
-    
-        if colors is None:
-            colors = ["#ADA8A8","#D61532"]
-        if maps_name is None:
-            maps_name = ["shimBase", "shimSlice"]
 
-        values_list = [pd.read_csv(f)["voxels_values"].values for f in csv_pair]
-         # --- Plot ---
-        fig, ax = plt.subplots(figsize=figsize)
+        if not os.path.exists(output_fname):
+            if csv_pair is None:
+                raise ValueError("Please provide a list of two CSV filenames.")
+        
+            if colors is None:
+                colors = ["#ADA8A8","#D61532"]
+            if maps_name is None:
+                maps_name = ["shimBase", "shimSlice"]
 
-        for i, values in enumerate(values_list):
-            if i==1:
-                alpha=0.9
-            values_clean = values[values != 0]
-            ax.hist(values_clean, bins=bins, color=colors[i], alpha=alpha,
-                    label=maps_name[i], density=False)
+            values_list = [pd.read_csv(f)["voxels_values"].values for f in csv_pair]
+            # --- Plot ---
+            fig, ax = plt.subplots(figsize=figsize)
 
-        ax.set_xlabel("t-value", fontsize=6, fontweight='bold', fontname="Arial")
-        ax.set_ylabel("# voxels", fontsize=6, fontweight='bold', fontname="Arial")
-        ax.tick_params(axis='both', labelsize=6)
-        ax.legend(fontsize=5)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+            for i, values in enumerate(values_list):
+                if i==1:
+                    alpha=0.9
+                values_clean = values[values != 0]
+                ax.hist(values_clean, bins=bins, color=colors[i], alpha=alpha,
+                        label=maps_name[i], density=False)
 
-        plt.tight_layout()
+            ax.set_xlabel("t-value", fontsize=8, fontweight='bold', fontname="Arial")
+            ax.set_ylabel("# significant voxels (GLM)", fontsize=8, fontweight='bold', fontname="Arial")
+            ax.tick_params(axis='both', labelsize=6)
+            ax.legend(fontsize=5)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
 
-        if output_fname is not None:
-            plt.savefig(output_fname, dpi=300)
+            plt.tight_layout()
+
+            plt.savefig(output_fname,transparent=True, dpi=300)
             plt.close(fig)
+        
+        return output_fname
 
     def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, redo=False):
         '''
@@ -818,17 +826,17 @@ class Figures_main:
                     
                     # Set the box color and alpha
                     box.set_color(color[color_index])  # Set box color
-                    box.set_alpha(0.3)  # Set alpha for the box
+                    box.set_alpha(0.4)  # Set alpha for the box
                     
                     whisker_lines = ax.lines[i * 6:i * 6 + 2]  # Whiskers are the first two lines for each box
                     for whisker in whisker_lines:
                         whisker.set_color(color[color_index])  # Set the whisker color
-                        whisker.set_alpha(0.3)  # Set alpha for whiskers
+                        whisker.set_alpha(0.4)  # Set alpha for whiskers
 
                     cap_lines = ax.lines[i * 6 + 2:i * 6 + 4]  # Caps are the next two lines for each box
                     for cap in cap_lines:
                         cap.set_color(color[color_index])  # Set the cap color
-                        cap.set_alpha(0.3)
+                        cap.set_alpha(0.4)
 
 
                     # Loop through each box and set outline color
@@ -854,7 +862,7 @@ class Figures_main:
                         fill=False,  # No fill for the outline
                         edgecolor=color[color_index],  # Same color as the box
                         lw=0,  # Line width
-                        alpha=0.3  # Set alpha for transparency of the outline
+                        alpha=0.4  # Set alpha for transparency of the outline
                     )
                     ax.add_patch(outline)  # Add the outline to the axis
 
@@ -927,10 +935,10 @@ class Figures_main:
                 ax.text((x1 + x2) / 2, y_bracket + (ymax - ymin) * 0.01,
                         stars,
                         ha='center', va='bottom',
-                        fontsize=5, color=bracket_color)
+                        fontsize=6, color=bracket_color)
             
             ax.set_xlabel('')
-            ax.set_ylabel(y_data, fontsize=6, fontname="Arial",fontweight='bold')
+            ax.set_ylabel(y_data, fontsize=8, fontname="Arial",fontweight='bold')
             ax.tick_params(axis='y', labelsize=5)
             
 
@@ -949,9 +957,69 @@ class Figures_main:
             
             ax.set_xticks(range(len(df[x_data_f].unique())))
             ax.set_xticklabels(x_order if x_order else df[x_data_f].unique(), 
-                   rotation=45, fontsize=6, fontweight='bold', fontname="Arial", ha='right')
+                   rotation=45, fontsize=8, fontweight='bold', fontname="Arial", ha='right')
             
             # Save the figure if requested
             plt.tight_layout()
             plt.savefig(output_fname, dpi=300, transparent=True)
             plt.close()
+        
+        return output_fname
+
+    def combine_plots(self, output_fname, row1_files, row2_files, row1_titles=["tSNR","GLM"], 
+                  row2_titles=None, figsize=(3.15, 10), row2_width_scale=0.9, redo=False):
+
+        if not os.path.exists(output_fname) or redo:
+            fig = plt.figure(figsize=figsize)
+
+            gs = fig.add_gridspec(2, 6,
+                                height_ratios=[5, 2.4],
+                                hspace=0.05, wspace=0.05)
+
+            # --- Row 1: 2 images spanning 3 columns each (unchanged)
+            for i, fname in enumerate(row1_files):
+                ax = fig.add_subplot(gs[0, i*3:(i+1)*3])
+                img = mpimg.imread(fname)
+                h, w = img.shape[:2]
+                ax.imshow(img, aspect='auto')
+                ax.set_xlim(0, w)
+                ax.set_ylim(h, -h*0.05)
+                ax.axis('off')
+                ax.set_clip_on(False)
+                if row1_titles:
+                    ax.text(w/1.7, -h*0.02,           # position above image
+                    row1_titles[i],
+                    ha='center', va='bottom',
+                    fontsize=7, fontweight='bold', fontname="Arial",
+                    transform=ax.transData)  # use data coordinates
+                
+                # Panel label
+                ax.text(0, -h*0.02, f"{chr(65+i)}.",   # A, B
+                ha='left', va='bottom',
+                fontsize=8, fontweight='bold', fontname="Arial",
+                transform=ax.transData)
+            
+
+            # --- Row 2: reduced width using inset_axes
+            for i, fname in enumerate(row2_files):
+                ax_outer = fig.add_subplot(gs[1, i*2:(i+1)*2])
+                ax_outer.axis('off')
+
+                # Place a smaller inset axes centered within the outer axes
+                margin = (1 - row2_width_scale) / 2
+                ax_inner = ax_outer.inset_axes([margin, 0, row2_width_scale, 1])
+                img = mpimg.imread(fname)
+                ax_inner.imshow(img, aspect='auto')
+                ax_inner.set_aspect('auto')
+                ax_inner.axis('off')
+                
+                # Panel label on outer axes
+                ax_outer.text(0, 1, f"{chr(67+i)}.",   # C, D, E
+                              ha='left', va='top',
+                              fontsize=8, fontweight='bold', fontname="Arial",
+                              transform=ax_outer.transAxes)
+
+            fig.subplots_adjust(wspace=0.1, hspace=0.001, left=0.01, right=0.99, top=0.99, bottom=0.01)
+            plt.savefig(output_fname, dpi=300, transparent=True)
+            plt.close()
+       
