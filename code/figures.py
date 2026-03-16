@@ -645,7 +645,7 @@ class Figures_main:
 
         return cbar
     
-    def bar_plot(self,csv_pair=None,metric="nonzero_voxels",output_fname=None, colors = None, maps_name=None, figsize=(1.8, 2.5),width=0.5, alpha=0.7):
+    def bar_plot(self,csv_pair=None,metric="nonzero_voxels",output_fname=None, colors = None, maps_name=None, figsize=(1.8, 2.5),width=0.5, alpha=0.8):
         """
         Plot a bar chart of metrics loaded from a pair of CSV files.
 
@@ -673,7 +673,7 @@ class Figures_main:
             raise ValueError("Please provide a list of two CSV filenames.")
     
         if colors is None:
-            colors = ["#43BA8C", "#F5AD27"]
+            colors = ["#ADA8A8","#ED263F"]
         if maps_name is None:
             maps_name = ["shimBase", "shimSlice"]
 
@@ -703,7 +703,7 @@ class Figures_main:
             plt.savefig(output_fname, dpi=300)
             plt.close(fig)
 
-    def plot_dist(self, csv_pair=None,output_fname=None,colors=None, maps_name=None,bins=100,figsize=(1.5, 2),width=0.5, alpha=0.7):
+    def plot_dist(self, csv_pair=None,output_fname=None,colors=None, maps_name=None,bins=100,figsize=(1.8, 2.3),width=0.5, alpha=0.8):
         """
         Plot a bar chart of suprathreshold voxel counts as a standalone figure.
 
@@ -732,7 +732,7 @@ class Figures_main:
             raise ValueError("Please provide a list of two CSV filenames.")
     
         if colors is None:
-            colors = ["#F5AD27","#43BA8C"]
+            colors = ["#ADA8A8","#D61532"]
         if maps_name is None:
             maps_name = ["shimBase", "shimSlice"]
 
@@ -741,6 +741,8 @@ class Figures_main:
         fig, ax = plt.subplots(figsize=figsize)
 
         for i, values in enumerate(values_list):
+            if i==1:
+                alpha=0.9
             values_clean = values[values != 0]
             ax.hist(values_clean, bins=bins, color=colors[i], alpha=alpha,
                     label=maps_name[i], density=False)
@@ -758,7 +760,7 @@ class Figures_main:
             plt.savefig(output_fname, dpi=300)
             plt.close(fig)
 
-    def boxplots(self, csv_file=None,df=None,output_fname=None, x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=7, ymax=17,height=3,aspect=0.8, invers_axes=False,indiv=False, group=False, redo=False):
+    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, redo=False):
         '''
         Create matrix of correlation boxplots with matching box outline and whisker colors.
         '''
@@ -770,7 +772,7 @@ class Figures_main:
 
             # Set style and default palette if not provided
             if color is None:
-                color = ["#B0B0B0","#C71E37"]
+                color = ["#ADA8A8","#ED263F"]
             if hue is None:
                 hue = x_data
                 hue_order = x_order
@@ -783,15 +785,15 @@ class Figures_main:
                 y_data_f=y_data
 
 
-            # Create the boxplot
+            #--- Create the boxplot
             g = sns.catplot(
                     x=x_data_f, 
                     y=y_data_f, 
                     data=df,  
                     kind="box",  
-                    linewidth=3, 
+                    linewidth=2, 
                     #color=color,  # Use the provided palette
-                    medianprops=dict(color="white"),  # Set median line color to white
+                    medianprops=dict(color="white",alpha=0.5),  # Set median line color to white
                     #hue=None,
                     order=x_order, 
                     #hue_order=None,
@@ -801,8 +803,6 @@ class Figures_main:
                     legend=plot_legend
                 )
 
-
-
             # Apply custom outline and whisker colors to match the palette
             for ax in g.axes.flat:
                 # Add a horizontal line at y=0
@@ -810,10 +810,8 @@ class Figures_main:
                     ax.axvline(0, color='grey', linestyle='--', linewidth=1)
                 else:
                     ax.axhline(0, color='grey', linestyle='--', linewidth=1)
+                
                 # Change whisker colors
-                
-                
-
                 for i, box in enumerate(ax.patches):  # Access the box patches
                     category = df[x_data_f].unique()[i % len(df[x_data_f].unique())]  # Use modulus to loop over categories
                     color_index = list(df[x_data_f].unique()).index(category)  # Get the index of the category in the unique list
@@ -825,16 +823,15 @@ class Figures_main:
                     whisker_lines = ax.lines[i * 6:i * 6 + 2]  # Whiskers are the first two lines for each box
                     for whisker in whisker_lines:
                         whisker.set_color(color[color_index])  # Set the whisker color
-                        whisker.set_alpha(0.2)  # Set alpha for whiskers
+                        whisker.set_alpha(0.3)  # Set alpha for whiskers
 
                     cap_lines = ax.lines[i * 6 + 2:i * 6 + 4]  # Caps are the next two lines for each box
                     for cap in cap_lines:
                         cap.set_color(color[color_index])  # Set the cap color
-                        cap.set_alpha(0.2)
+                        cap.set_alpha(0.3)
 
 
                     # Loop through each box and set outline color
-                
                     # Get the current category for the box
                     category = df[x_data_f].unique()[i % len(df[x_data_f].unique())]  # Use modulus to loop over categories
                     color_index = list(df[x_data_f].unique()).index(category)  # Get the index of the category in the unique list
@@ -856,14 +853,12 @@ class Figures_main:
                         box_height,  # Height
                         fill=False,  # No fill for the outline
                         edgecolor=color[color_index],  # Same color as the box
-                        lw=3,  # Line width
+                        lw=0,  # Line width
                         alpha=0.3  # Set alpha for transparency of the outline
                     )
                     ax.add_patch(outline)  # Add the outline to the axis
 
-
-
-            # Add individual points if requested
+            # ------- Add individual points if requested
             if indiv_values:
                 sns.stripplot(
                     x=x_data_f, 
@@ -871,19 +866,18 @@ class Figures_main:
                     data=df, 
                     hue=hue, 
                     hue_order=hue_order,
-                    size=8,
+                    size=5,
                     palette=indiv_color if indiv_color else color,
                     #palette=palette, 
                     linewidth=0, 
-                    alpha=0.8,
+                    alpha=0.7,
                     edgecolor='white',
-                    jitter=0.25
+                    jitter=False #set 0.25 to add jitter between individual points
                 )
 
                 # Draw lines between points from the same individual
                 ax = g.axes.flat[0]
 
-               
                 x_positions = {}
                 collections = [c for c in ax.collections if isinstance(c, plt.matplotlib.collections.PathCollection)]  # Get the jittered x positions from the stripplot collections
 
@@ -894,7 +888,7 @@ class Figures_main:
                         # Match y value back to the ID
                         matched = df[(df[x_data_f] == category) & (np.isclose(df[y_data_f], y_pos))]
                         if not matched.empty:
-                            ind_id = matched.iloc[0]['ID']
+                            ind_id = matched.iloc[0]['IDs']
                             if ind_id not in x_positions:
                                 x_positions[ind_id] = {}
                             x_positions[ind_id][category] = (x_pos, y_pos)
@@ -904,8 +898,42 @@ class Figures_main:
                     ordered_cats = [c for c in (x_order if x_order else df[x_data_f].unique()) if c in coords]
                     xs = [coords[c][0] for c in ordered_cats]
                     ys = [coords[c][1] for c in ordered_cats]
-                    ax.plot(xs, ys, color='grey', alpha=0.4, linewidth=1, zorder=1)
+                    ax.plot(xs, ys, color='grey', alpha=1,linestyle='--', linewidth=1, zorder=1) #linestyle='--',
             
+            # ------- Add significance annotation if stats_file provided
+            if stats_file is not None:
+                stats_df = pd.read_csv(stats_file)
+                ax = g.axes.flat[0]
+
+                # Get x positions of the two conditions
+                if x_order:
+                    x1 = x_order.index(stats_df['cond1'].values[0])
+                    x2 = x_order.index(stats_df['cond2'].values[0])
+                else:
+                    cats = list(df[x_data_f].unique())
+                    x1 = cats.index(stats_df['cond1'].values[0])
+                    x2 = cats.index(stats_df['cond2'].values[0])
+
+                stars = stats_df['significance'].values[0]
+
+                # Draw bracket
+                y_bracket = ymax * 0.97  # just below the top
+                y_tip     = y_bracket - (ymax - ymin) * 0.02
+                bracket_color = 'black'
+
+                ax.plot([x1, x1, x2, x2], 
+                        [y_tip, y_bracket, y_bracket, y_tip],
+                        color=bracket_color, linewidth=1)
+                ax.text((x1 + x2) / 2, y_bracket + (ymax - ymin) * 0.01,
+                        stars,
+                        ha='center', va='bottom',
+                        fontsize=5, color=bracket_color)
+            
+            ax.set_xlabel('')
+            ax.set_ylabel(y_data, fontsize=6, fontname="Arial",fontweight='bold')
+            ax.tick_params(axis='y', labelsize=5)
+            
+
             if output_tag:
                 g.set(title=output_tag)
 
@@ -913,13 +941,17 @@ class Figures_main:
                 g.set(xlim=(ymin, ymax))
             else:
                 g.set(ylim=(ymin, ymax))
-            sns.despine(offset=30, trim=True)
+            sns.despine(offset=5, trim=True)
             if plot_legend:
                 g.add_legend()
             else:
                 plt.legend([],[], frameon=False)
             
-            # Save the figure if requested
+            ax.set_xticks(range(len(df[x_data_f].unique())))
+            ax.set_xticklabels(x_order if x_order else df[x_data_f].unique(), 
+                   rotation=45, fontsize=6, fontweight='bold', fontname="Arial", ha='right')
             
+            # Save the figure if requested
+            plt.tight_layout()
             plt.savefig(output_fname, dpi=300, transparent=True)
             plt.close()
