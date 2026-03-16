@@ -107,7 +107,7 @@ for acq_name in config["design_exp"]["acq_names"]:
     fname_csv=glob.glob(tsnr_path.split("sub")[0] +  "/tsnr_metrics.csv")[0]
 
     print(f"{output_fig}/n{len(IDs)}_tsnr_boxplot.png")
-    figures.boxplots(fname_csv, output_fname=f"{output_fig}/n{len(IDs)}_tsnr_boxplot.png",x_data="acq",x_order=["shimBase+3mm","shimSlice+3mm"],indiv_values=True,y_data="tsnr_mean",color=["#F5AD27","#43BA8C"],redo=True)
+    figures.boxplots(df, output_fname=f"{output_fig}/n{len(IDs)}_tsnr_boxplot.png",x_data="acq",x_order=["shimBase+3mm","shimSlice+3mm"],indiv_values=True,y_data="tsnr_mean",redo=True)
 
 #------------------------------------------------------------------
 #------ Run second level analysis

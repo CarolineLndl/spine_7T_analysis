@@ -758,17 +758,19 @@ class Figures_main:
             plt.savefig(output_fname, dpi=300)
             plt.close(fig)
 
-    def boxplots(self, csv_file=None,output_fname=None, x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=7, ymax=17,height=3,aspect=0.8, invers_axes=False,indiv=False, group=False, redo=False):
+    def boxplots(self, csv_file=None,df=None,output_fname=None, x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=7, ymax=17,height=3,aspect=0.8, invers_axes=False,indiv=False, group=False, redo=False):
         '''
         Create matrix of correlation boxplots with matching box outline and whisker colors.
         '''
 
         if not os.path.exists(output_fname) or redo:
-            df = pd.read_csv(csv_file)
+            if csv_file:
+                df = pd.read_csv(csv_file)
+            
 
             # Set style and default palette if not provided
             if color is None:
-                color = ["#F5AD27","#43BA8C"]
+                color = ["#B0B0B0","#C71E37"]
             if hue is None:
                 hue = x_data
                 hue_order = x_order
@@ -818,17 +820,17 @@ class Figures_main:
                     
                     # Set the box color and alpha
                     box.set_color(color[color_index])  # Set box color
-                    box.set_alpha(0.2)  # Set alpha for the box
+                    box.set_alpha(0.3)  # Set alpha for the box
                     
                     whisker_lines = ax.lines[i * 6:i * 6 + 2]  # Whiskers are the first two lines for each box
                     for whisker in whisker_lines:
                         whisker.set_color(color[color_index])  # Set the whisker color
-                        whisker.set_alpha(0.7)  # Set alpha for whiskers
+                        whisker.set_alpha(0.2)  # Set alpha for whiskers
 
                     cap_lines = ax.lines[i * 6 + 2:i * 6 + 4]  # Caps are the next two lines for each box
                     for cap in cap_lines:
                         cap.set_color(color[color_index])  # Set the cap color
-                        cap.set_alpha(0.7)
+                        cap.set_alpha(0.2)
 
 
                     # Loop through each box and set outline color
@@ -854,8 +856,8 @@ class Figures_main:
                         box_height,  # Height
                         fill=False,  # No fill for the outline
                         edgecolor=color[color_index],  # Same color as the box
-                        lw=5,  # Line width
-                        alpha=0.7  # Set alpha for transparency of the outline
+                        lw=3,  # Line width
+                        alpha=0.3  # Set alpha for transparency of the outline
                     )
                     ax.add_patch(outline)  # Add the outline to the axis
 
@@ -872,14 +874,37 @@ class Figures_main:
                     size=8,
                     palette=indiv_color if indiv_color else color,
                     #palette=palette, 
-                    linewidth=1, 
-                    alpha=0.3,
+                    linewidth=0, 
+                    alpha=0.8,
                     edgecolor='white',
                     jitter=0.25
                 )
 
-            # Set axis labels and formatting
-            #g.set_axis_labels(" ", "corr", fontsize=12, fontweight='bold')
+                # Draw lines between points from the same individual
+                ax = g.axes.flat[0]
+
+               
+                x_positions = {}
+                collections = [c for c in ax.collections if isinstance(c, plt.matplotlib.collections.PathCollection)]  # Get the jittered x positions from the stripplot collections
+
+                for coll_idx, collection in enumerate(collections):
+                    offsets = collection.get_offsets()
+                    category = x_order[coll_idx] if x_order else df[x_data_f].unique()[coll_idx]
+                    for x_pos, y_pos in offsets:
+                        # Match y value back to the ID
+                        matched = df[(df[x_data_f] == category) & (np.isclose(df[y_data_f], y_pos))]
+                        if not matched.empty:
+                            ind_id = matched.iloc[0]['ID']
+                            if ind_id not in x_positions:
+                                x_positions[ind_id] = {}
+                            x_positions[ind_id][category] = (x_pos, y_pos)
+
+                # Draw lines using the recovered jittered positions
+                for ind_id, coords in x_positions.items():
+                    ordered_cats = [c for c in (x_order if x_order else df[x_data_f].unique()) if c in coords]
+                    xs = [coords[c][0] for c in ordered_cats]
+                    ys = [coords[c][1] for c in ordered_cats]
+                    ax.plot(xs, ys, color='grey', alpha=0.4, linewidth=1, zorder=1)
             
             if output_tag:
                 g.set(title=output_tag)
