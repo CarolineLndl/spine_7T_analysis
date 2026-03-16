@@ -9,6 +9,10 @@ import nibabel as nib
 import matplotlib.pyplot as plt
 import matplotlib
 import matplotlib.image as mpimg
+import matplotlib.gridspec as gridspec
+import matplotlib.patches as mpatches
+from matplotlib.patches import Patch, Arrow
+from matplotlib.legend_handler import HandlerPatch
 
 # nilearn
 from nilearn.plotting import plot_design_matrix
@@ -21,6 +25,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import seaborn as sns
+
+from scipy.ndimage import center_of_mass
 
 #####################################################
 class Figures_main:
@@ -1022,4 +1028,269 @@ class Figures_main:
             fig.subplots_adjust(wspace=0.1, hspace=0.001, left=0.01, right=0.99, top=0.99, bottom=0.01)
             plt.savefig(output_fname, dpi=300, transparent=True)
             plt.close()
-       
+    
+    def epi_comparison_fig(self, IDs=None,fnames_func_pairs=None,output_dir=None,fnames_seg_pairs=None,fnames_warp_pairs=None,task_name="motor", titles=["shimBase","shimSlice"],show_avg=False, show_slice_factor=2,redo=False):
+        # Create figure that shows moco mean in native space between baseline and slicewise shim
+        # Highlight specific slices
+
+        # highlight = {'090': [1, 3, 7, 9, 25, 27],
+        #              '094': [],
+        #              '095': [1, 3, 11, 15, 21, 23, 27],
+        #              '100': [1, 5, 7, 9],
+        #              '101': [1, 5, 13, 27],
+        #              '106': [1, 11, 15, 19, 21],
+        #              'avg': [168]}
+
+        highlight = {'090': {1: 'sigtot', 3: 'sigtot', 7: 'sigtot', 9: 'geo'},
+                     '094': {1: 'sigtot', 5: 'geo', 27: 'sigtot'},
+                     '095': {1: 'sigvert', 3: 'sigvert', 21: 'sigtot'},
+                     '101': {1: 'geo', 5: 'sigtot', 27: 'sigvert'},
+                     '106': {1: 'sigtot', 11: 'geo', 15: 'geo', 19: 'geo'}}
+
+        color = {'sigtot': '#31E8BA', 'sigvert': '#F5B627', 'geo': '#27BBF5'}
+
+        n_part = len(IDs)
+        if n_part > 5:
+            n_part = 5
+
+        ids_to_show = []
+
+        for i_part in range(n_part):
+            ID = IDs[i_part] if IDs[i_part] in IDs else IDs[i_part]
+            ids_to_show.append(ID)
+
+        n_max_slices = 0
+        for i_id, ID in enumerate(ids_to_show):
+            # Paths for baseline and slicewise shim images
+            nii_tmp = nib.load(fnames_func_pairs[i_id][0])
+            if n_max_slices < nii_tmp.shape[2]:
+                n_max_slices = nii_tmp.shape[2]
+
+        width_ratios = []
+        [width_ratios.extend([1, 1, 0.09]) for _ in range(n_part)]
+
+        width_ratios = width_ratios[:-1]  # remove the last 0.1
+        fig = plt.figure(figsize=(2.1 * n_part, n_max_slices // show_slice_factor))
+        gs_main = gridspec.GridSpec(2, (n_part * 2) + (n_part -1), figure=fig, hspace=0, wspace=0, width_ratios=width_ratios, height_ratios=[0.001,1])
+
+        print("IDs to show in the figure:", ids_to_show, flush=True)
+        for i_id, ID in enumerate(ids_to_show):
+
+            gs_title = gs_main[0, i_id * 3:(i_id + 1) * 3 - 1].subgridspec(1, 1)
+            ax_title = gs_title.subplots()
+            ax_title.axis('off')
+            ax_title.set_title(f"ID {ID}", fontsize=12, fontweight='bold')
+
+            # Load images and masks
+            img_baseline = nib.load(fnames_func_pairs[i_id][0]).get_fdata()
+            print(fnames_func_pairs[i_id])
+            img_slicewise = nib.load(fnames_func_pairs[i_id][1]).get_fdata()
+            print(fnames_seg_pairs[i_id])
+            mask_baseline = nib.load(fnames_seg_pairs[i_id][0]).get_fdata()
+            mask_slicewise = nib.load(fnames_seg_pairs[i_id][1]).get_fdata()
+
+            bound_lr = 16  # left-right bound
+            bound_ud = 16  # up-down bound
+            vmin, vmax = self.calc_vmin_vmax(mask_baseline, mask_slicewise, img_baseline, img_slicewise, False,
+                                        avg_baseline=None, avg_slicewise=None, show_slice_factor=2,
+                                        bound_lr=bound_lr, bound_ud=bound_ud)
+
+            delta = vmax - vmin
+            # vmin = vmin + 0.1 * delta
+            vmax = vmax - 0.1 * delta
+
+            gs_baseline = gs_main[1, i_id * 3].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
+            gs_slicewise = gs_main[1, i_id * 3 + 1].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
+            axs_baseline = gs_baseline.subplots()
+            axs_slicewise = gs_slicewise.subplots()
+
+            range_slices = range(n_max_slices - 1, -1, -show_slice_factor)
+            for idx, slice_idx in enumerate(range_slices):
+                com_baseline = center_of_mass(mask_baseline[:, :, slice_idx])
+                com_slicewise = center_of_mass(mask_slicewise[:, :, slice_idx])
+
+                # Define cropping bounds
+                crop_x_baseline = slice(max(0, int(com_baseline[0] - bound_lr)),
+                                        min(mask_baseline.shape[0], int(com_baseline[0] + bound_lr)))
+                crop_y_baseline = slice(max(0, int(com_baseline[1] - bound_ud)),
+                                        min(mask_baseline.shape[1], int(com_baseline[1] + bound_ud)))
+
+                crop_x_slicewise = slice(max(0, int(com_slicewise[0] - bound_lr)),
+                                         min(mask_slicewise.shape[0], int(com_slicewise[0] + bound_lr)))
+                crop_y_slicewise = slice(max(0, int(com_slicewise[1] - bound_ud)),
+                                         min(mask_slicewise.shape[1], int(com_slicewise[1] + bound_ud)))
+
+                # Crop the images
+                cropped_baseline = img_baseline[crop_x_baseline, crop_y_baseline, slice_idx]
+                cropped_slicewise = img_slicewise[crop_x_slicewise, crop_y_slicewise, slice_idx]
+
+                axs_baseline[idx].imshow(cropped_baseline.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
+                axs_baseline[idx].set_aspect('equal', adjustable='box')
+                axs_slicewise[idx].imshow(cropped_slicewise.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
+                axs_slicewise[idx].set_aspect('equal', adjustable='box')
+
+                color_baseline = "#ADA8A8"
+                color_slicewise = "#ED263F"
+                if idx == len(range_slices) - 1 and i_id == 0:
+                    legend_fontsize = 10
+                    legend_elements = [Patch(facecolor='white', edgecolor=color_baseline, label='Baseline',
+                                             linewidth=1.5),
+                                       Patch(facecolor='white', edgecolor=color_slicewise, label='Slicewise',
+                                             linewidth=1.5)]
+                    axs_baseline[idx].legend(handles=legend_elements, loc=(0, -0.75), fontsize=legend_fontsize)
+
+                    legend_elements = [Arrow(0, 0, 0.2, 0, color=color['sigtot'], label='Improvement in signal loss from overall inhomogeneity', width=0.1, lw=2),
+                                       Arrow(0, 0, 0.2, 0, color=color['sigvert'], label='Improvement in signal loss from inter-vertebral discs', width=0.1, lw=2),
+                                       Arrow(0, 0, 0.2, 0, color=color['geo'], label='Improvement in geometric distortions', width=0.1, lw=2)]
+                    axs_slicewise[idx].legend(handles=legend_elements, loc=(1.2, -1), fontsize=legend_fontsize, handler_map={mpatches.Arrow : HandlerPatch(patch_func=self.make_legend_arrow)})
+
+                # Color the borders of the baseline images in yellow to differentiate them from the slicewise images
+                spine_thickness = 1.25
+                axs_baseline[idx].tick_params(axis='both', which='both', length=0, labelbottom=False, labelleft=False, bottom=False, left=False)
+                # Example: Change spine border thickness
+                for spine in axs_baseline[idx].spines.values():
+                    spine.set_linewidth(spine_thickness)  # Set the border thickness to 2
+                axs_baseline[idx].spines['left'].set_edgecolor(color_baseline)
+                axs_baseline[idx].spines['right'].set_edgecolor(color_baseline)
+                if idx == 0:
+                    axs_baseline[idx].spines['top'].set_edgecolor(color_baseline)
+                    axs_baseline[idx].spines['bottom'].set_visible(False)
+                elif idx == len(range_slices) - 1:
+                    axs_baseline[idx].spines['top'].set_visible(False)
+                    axs_baseline[idx].spines['bottom'].set_edgecolor(color_baseline)
+                else:
+                    axs_baseline[idx].spines['top'].set_visible(False)
+                    axs_baseline[idx].spines['top'].set_visible(False)
+
+
+                axs_slicewise[idx].tick_params(axis='both', which='both', length=0, labelbottom=False,
+                                              labelleft=False, bottom=False, left=False)
+                # Example: Change spine border thickness
+                for spine in axs_slicewise[idx].spines.values():
+                    spine.set_linewidth(spine_thickness)  # Set the border thickness to 2
+                axs_slicewise[idx].spines['left'].set_edgecolor(color_slicewise)
+                axs_slicewise[idx].spines['right'].set_edgecolor(color_slicewise)
+                if idx == 0:
+                    axs_slicewise[idx].spines['top'].set_edgecolor(color_slicewise)
+                    axs_slicewise[idx].spines['bottom'].set_visible(False)
+                elif idx == len(range_slices) - 1:
+                    axs_slicewise[idx].spines['top'].set_visible(False)
+                    axs_slicewise[idx].spines['bottom'].set_edgecolor(color_slicewise)
+                else:
+                    axs_slicewise[idx].spines['top'].set_visible(False)
+                    axs_slicewise[idx].spines['top'].set_visible(False)
+
+                template_slice_idx = self.func_slice_to_template_slice(slice_idx,com_baseline[0], com_baseline[1], fnames_warp_pairs[i_id][0], fnames_func_pairs[i_id][0], ID, task_name, titles[0],redo=redo)
+                spinal_level = self.template_slice_to_spinal_level(template_slice_idx)[1]
+                axs_baseline[idx].text(0.1, 0.9, spinal_level, color='white', fontsize=5, fontweight='bold', ha='center', va='center', transform=axs_baseline[idx].transAxes)
+
+                if ID in highlight and slice_idx in highlight[ID].keys():
+                    # Add an arrow pointing to a specific point
+                    axs_slicewise[idx].annotate(
+                        '',  # Empty text
+                        xy=(0.3, 0.3),  # Arrowhead location
+                        xytext=(0.05, 0.05),  # Arrow tail location
+                        xycoords='axes fraction',
+                        arrowprops=dict(arrowstyle="->", color=color[highlight[ID][slice_idx]], lw=2),
+                    )
+
+        fname_fig_epi_comparison = os.path.join(output_dir, f"epi_comparison.png")
+        fig.savefig(fname_fig_epi_comparison, dpi=800)
+
+    
+    def calc_vmin_vmax(self,mask_baseline, mask_slicewise, img_baseline, img_slicewise, show_avg, avg_baseline=None, avg_slicewise=None, show_slice_factor=2, bound_lr=16, bound_ud=16):
+        n_slices = img_baseline.shape[2]
+        vmin = None
+        vmax = None
+        for idx, slice_idx in enumerate(range(n_slices - 1, -1, -show_slice_factor)):
+            com_baseline = center_of_mass(mask_baseline[:, :, slice_idx])
+            com_slicewise = center_of_mass(mask_slicewise[:, :, slice_idx])
+
+            # Define cropping bounds
+            crop_x_baseline = slice(max(0, int(com_baseline[0] - bound_lr)),
+                                    min(mask_baseline.shape[0], int(com_baseline[0] + bound_lr)))
+            crop_y_baseline = slice(max(0, int(com_baseline[1] - bound_ud)),
+                                    min(mask_baseline.shape[1], int(com_baseline[1] + bound_ud)))
+
+            crop_x_slicewise = slice(max(0, int(com_slicewise[0] - bound_lr)),
+                                    min(mask_slicewise.shape[0], int(com_slicewise[0] + bound_lr)))
+            crop_y_slicewise = slice(max(0, int(com_slicewise[1] - bound_ud)),
+                                    min(mask_slicewise.shape[1], int(com_slicewise[1] + bound_ud)))
+
+            # Crop the images
+            cropped_baseline = img_baseline[crop_x_baseline, crop_y_baseline, slice_idx]
+            cropped_slicewise = img_slicewise[crop_x_slicewise, crop_y_slicewise, slice_idx]
+            if vmin is None:
+                vmin = min(cropped_baseline.min(), cropped_slicewise.min())
+                vmax = max(cropped_baseline.max(), cropped_slicewise.max())
+            else:
+                vmin = min(vmin, cropped_baseline.min(), cropped_slicewise.min())
+                vmax = max(vmax, cropped_baseline.max(), cropped_slicewise.max())
+
+            if show_avg:
+                cropped_baseline_avg = avg_baseline[crop_x_baseline, crop_y_baseline, slice_idx]
+                cropped_slicewise_avg = avg_slicewise[crop_x_slicewise, crop_y_slicewise, slice_idx]
+
+                vmin = min(vmin, cropped_baseline_avg.min(), cropped_slicewise_avg.min())
+                vmax = max(vmax, cropped_baseline_avg.max(), cropped_slicewise_avg.max())
+
+        if vmin is None or vmax is None:
+            raise RuntimeError("Could not compute vmin and vmax for the images")
+
+        return vmin, vmax
+    
+    def template_slice_to_spinal_level(self,template_slice):
+        spinal_levels = {
+            0: range(435, 440),
+            1: range(420, 435),  # C1...
+            2: range(399, 420),
+            3: range(366, 399),
+            4: range(333, 366),
+            5: range(300, 333),
+            6: range(269, 300),
+            7: range(238, 269),
+            8: range(206, 238),
+            9: range(172, 206),
+            10: range(135, 172),
+            11: range(94, 135),
+            12: range(47, 94),
+            13: range(420, 47)
+        }
+        spinal_levels_to_label = {1: 'C1', 2: 'C2', 3: 'C3', 4: 'C4', 5: 'C5', 6: 'C6', 7: 'C7', 8: 'C8', 9: 'T1', 10: 'T2', 11: 'T3', 12: 'T4', 13: 'T5'}
+
+        data_spinal_levels = np.zeros((440,), dtype=int)
+        for level, range_ in spinal_levels.items():
+            for r in range_:
+                data_spinal_levels[r] = level
+
+        return data_spinal_levels[template_slice], spinal_levels_to_label.get(data_spinal_levels[template_slice], 'Unknown')
+    
+    def func_slice_to_template_slice(self, func_slice, com1, com2, fname_warp_template_to_func, fname_moco_mean, ID, task, acq_name,redo):
+        name = f"sub-{ID}_task-{task}_acq-{acq_name}"
+
+        fname_slice_temp = os.path.join(os.path.dirname(fname_moco_mean), "template_slice.nii.gz")
+
+        if not os.path.exists(fname_slice_temp) or redo:
+            # Take the template, overwrite it with the slice number, and warp it to func space.
+            fname_template = os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"])
+            nii_template = nib.load(fname_template)
+            data = nii_template.get_fdata()
+            for i_slice in range(nii_template.shape[2]):
+                data_template_slice = np.full_like(data[..., 0], i_slice)
+                data[:, :, i_slice] = data_template_slice
+
+            nii_slice_temp = nib.Nifti1Image(data.astype(np.int16), affine=nii_template.affine, header=nii_template.header)
+            nib.save(nii_slice_temp, fname_slice_temp)
+
+        fname_template_slice_in_func = os.path.join(os.path.dirname(fname_moco_mean),  f"{name}_template_slice_in_func.nii.gz")
+        if not os.path.exists(fname_template_slice_in_func) or redo:
+            cmd_coreg = f"sct_apply_transfo -i {fname_slice_temp} -d {fname_moco_mean} -w {fname_warp_template_to_func} -o {fname_template_slice_in_func}"
+            os.system(cmd_coreg)
+
+        nii_slice_func = nib.load(fname_template_slice_in_func)
+        slice_temp = int(nii_slice_func.get_fdata()[int(com1), int(com2), func_slice])
+        return slice_temp
+    
+    def make_legend_arrow(self,legend, orig_handle,xdescent, ydescent,width, height, fontsize):
+        p = mpatches.FancyArrow(0, 0.5*height, width, 0, length_includes_head=True, head_width=0.75*height )
+        return p

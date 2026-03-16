@@ -93,11 +93,38 @@ print("")
 #------------------------------------------------------------------
 #------ II. Plot EPI comparison
 #------------------------------------------------------------------
+print("=== Epi comparison script Start ===", flush=True)
+print("===================================", flush=True)
+print("")
+IDs_EPIcomp=['090', '094', '095', '101', '106']
 EpiComparison=postprocess.EpiComparison(config, IDs=IDs)
-for ID_nb, ID in enumerate(IDs):
-    for task_name in ["motor"]:
-        EpiComparison.create_mocomean_same_vols(ID=ID, task_name=task_name,acq_names=config["design_exp"]["acq_names"], redo=redo)
+print(main_fig_dir)
+for task_name in ["motor"]:
+    epi_fnames=[];cord_seg_fnames=[];warp_fnames=[]
 
+    for ID_nb, ID in enumerate(IDs_EPIcomp):
+        cord_seg_file=[];warp_file=[]
+        epi_fnames.append(EpiComparison.create_mocomean_same_vols(ID=ID, task_name=task_name,acq_names=config["design_exp"]["acq_names"], redo=redo))
+        
+        for acq_name in config["design_exp"]["acq_names"]:
+            tag="task-" + task_name + "_acq-" + acq_name
+            cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',tag, config["preprocess_f"]["func_seg"].format(ID,tag,"")))[0])
+            warp_file.append(os.path.join(preprocessing_dir.format(ID), 'func', tag, f"sub-{ID}_{tag}_from-func_to_PAM50_mode-image_xfm.nii.gz"))
+    
+        cord_seg_fnames.append(cord_seg_file)
+        warp_fnames.append(warp_file)
+
+    print(cord_seg_fnames)
+    print("")
+    
+    figures.epi_comparison_fig(IDs=IDs_EPIcomp,
+                               fnames_func_pairs=epi_fnames,
+                               fnames_seg_pairs=cord_seg_fnames,
+                               fnames_warp_pairs=warp_fnames,
+                               output_dir=main_fig_dir + "/first_level/")
+print("=== EPI comparison script Done ===", flush=True)
+print("===================================", flush=True)
+print("")
 #------------------------------------------------------------------
 #------ III. Run First level
 #------------------------------------------------------------------
@@ -259,7 +286,7 @@ for ID in IDs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 figures.plot_first_level_maps(i_fnames=i_fnames_by_runs,
-                                         output_fname=os.path.join(fig_dir, F"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
+                                         output_fname=os.path.join(main_fig_dir + "/first_level/", f"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
                                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                           mask_fname=cropped_PAM50_fname,
                                           titles=["shimBase","shimSlice","shimSlice"],

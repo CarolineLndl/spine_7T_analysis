@@ -592,7 +592,7 @@ class TSNR_main:
                 tsnr_basename=tsnr_fnames[i].split("moco")[0]
                 fname_tsnr_in_template=glob.glob(tsnr_basename + "moco_tsnr_in_PAM50.nii.gz")[0]
 
-                nii_roi = self.count_roi_in_template(tsnr_fnames[i],
+                nii_roi = count_roi_in_template(tsnr_fnames[i],
                                                      ID, 
                                                      acq_name,
                                                      seg_fnames[i],
@@ -623,22 +623,21 @@ class TSNR_main:
             nib.save(nii_tsnr_avg, fname_tsnr_avg)
 
         return fname_tsnr_avg
-    
-    def count_roi_in_template(self,fname_tnsr, ID, tag, fname_seg, fname_warp_from_func_to_template,
-                          fname_template, redo):
-        fname_ones_in_func = os.path.join(os.path.dirname(fname_tnsr), f"sub-{ID}_{tag}_ones.nii.gz")
-        fname_ones_in_template = os.path.join(os.path.dirname(fname_tnsr), f"sub-{ID}_{tag}_ones_in_PAM50.nii.gz")
-        if not os.path.exists(fname_ones_in_func) or redo:
-            nii_tmp = nib.load(fname_seg)
-            data_ones = np.ones_like(nii_tmp.get_fdata())
-            nii_ones = nib.Nifti1Image(data_ones, affine=nii_tmp.affine, header=nii_tmp.header)
-            nib.save(nii_ones, fname_ones_in_func)
+     
+    def count_roi_in_template(self,fname, ID, tag, fname_seg, fname_warp_from_func_to_template, fname_template, redo):
+            fname_ones_in_func = os.path.join(os.path.dirname(fname), f"sub-{ID}_{tag}_ones.nii.gz")
+            fname_ones_in_template = os.path.join(os.path.dirname(fname), f"sub-{ID}_{tag}_ones_in_PAM50.nii.gz")
+            if not os.path.exists(fname_ones_in_func) or redo:
+                nii_tmp = nib.load(fname_seg)
+                data_ones = np.ones_like(nii_tmp.get_fdata())
+                nii_ones = nib.Nifti1Image(data_ones, affine=nii_tmp.affine, header=nii_tmp.header)
+                nib.save(nii_ones, fname_ones_in_func)
 
-        if not os.path.exists(fname_ones_in_template) or redo:
-            cmd_coreg = f"sct_apply_transfo -i {fname_ones_in_func} -d {fname_template} -w {fname_warp_from_func_to_template} -o {fname_ones_in_template}"
-            os.system(cmd_coreg)
-        nii_roi = nib.load(fname_ones_in_template)
-        return nii_roi
+            if not os.path.exists(fname_ones_in_template) or redo:
+                cmd_coreg = f"sct_apply_transfo -i {fname_ones_in_func} -d {fname_template} -w {fname_warp_from_func_to_template} -o {fname_ones_in_template}"
+                os.system(cmd_coreg)
+            nii_roi = nib.load(fname_ones_in_template)
+            return nii_roi
     
     def find_moco_for_tsnr_calculation(self,ID, task, acq_name):
         files = glob.glob(os.path.join(
@@ -731,34 +730,33 @@ class EpiComparison:
 
     def create_mocomean_same_vols(self,ID=None, task_name=None,acq_names=None, redo=False):
         
-        # Output
+        # Initiate function
         path_sub = os.path.join(self.first_level_dir.format("epi_comparison",ID))
         os.makedirs(path_sub,exist_ok=True)
 
-        fname_func=[];fnames_moco=[];vols_all=[]
+        fnames_func=[];fnames_moco=[];vols_all=[]
+        fname_template = os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"])
 
         #Check if the file exists and the file with the min volume number
-        for acq_name in acq_names:
-            fname_func.append(os.path.join(path_sub, f"sub-{ID}_task-{task_name}_acq-{acq_name}_bold_moco_mean_samevols.nii.gz"))
-
-            if not os.path.exists(fname_func[0]) or not os.path.exists(fname_func[1]) or redo:
-                # select the functional image (sometime there are multiple runs)
-                fname_acq_list = sorted(glob.glob(os.path.join(self.config["raw_dir"],f"sub-{ID}","func",f"sub-{ID}_task-{task_name}_acq-{acq_name}*_bold.nii.gz" )))
-                if len(fname_acq_list) == 0:
-                    raise RuntimeError(f"No file found for sub-{ID} task-{task_name} acq-{acq_name}")
-                
-                # extract its number of volumes 
-                vols = 0
-                idx = -1
-                for i, fname in enumerate(fname_acq_list):
-                    img = nib.load(fname)
-                    n_vols = img.shape[3]
-                    if n_vols > vols:
-                        vols = n_vols
-                        idx = i
-                
-                fnames_moco.append(fname_acq_list[idx])
-                vols_all.append(vols)
+        for i,acq_name in enumerate(acq_names):
+            fnames_func.append(os.path.join(path_sub, f"sub-{ID}_task-{task_name}_acq-{acq_name}_bold_moco_mean_samevols.nii.gz"))
+            # select the functional image (sometime there are multiple runs)
+            fname_acq_list = sorted(glob.glob(os.path.join(self.config["raw_dir"],f"sub-{ID}","func",f"sub-{ID}_task-{task_name}_acq-{acq_name}*_bold.nii.gz" )))
+            if len(fname_acq_list) == 0:
+                raise RuntimeError(f"No file found for sub-{ID} task-{task_name} acq-{acq_name}")
+            
+            # extract its number of volumes 
+            vols = 0
+            idx = -1
+            for i, fname in enumerate(fname_acq_list):
+                img = nib.load(fname)
+                n_vols = img.shape[3]
+                if n_vols > vols:
+                    vols = n_vols
+                    idx = i
+            
+            fnames_moco.append(fname_acq_list[idx])
+            vols_all.append(vols)
         
         # check which acquisition has the most volumes
         vols = min(vols_all[0], vols_all[1])
@@ -768,6 +766,10 @@ class EpiComparison:
         
         #save the two files by including the same number of volumes
         for i, acq_name in enumerate(acq_names):
-            img = nib.load(fnames_moco[i])
-            data = np.mean(img.get_fdata()[:, :, :, :vols], axis=3)
-            nib.save(nib.Nifti1Image(data, affine=img.affine, header=img.header),fname_func[i])
+            if not os.path.exists(fnames_func[i]) or redo:
+                img = nib.load(fnames_moco[i])
+                data = np.mean(img.get_fdata()[:, :, :, :vols], axis=3)
+                nib.save(nib.Nifti1Image(data, affine=img.affine, header=img.header),fnames_func[i])
+            
+        return fnames_func
+    
