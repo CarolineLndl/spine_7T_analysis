@@ -71,12 +71,15 @@ print("================================", flush=True)
 
 # Load participants info
 participants_tsv = pd.read_csv(os.path.join(path_code,'config', 'participants.tsv'), sep='\t',dtype={'participant_id': str})
+acq_parameters = []
 
 new_IDs=[]
 if IDs == [""]:
     for ID in participants_tsv["participant_id"]:
         new_IDs.append(ID)
     IDs = new_IDs
+
+utils.print_participant_metrics(participants_tsv, IDs)
 
 if tasks != [""]:
     config["design_exp"]["task_names"] = tasks
@@ -171,6 +174,13 @@ for ID_nb, ID in enumerate(IDs):
                     print(run_name)
                 else:
                     run_name = ""
+
+                params = utils.extract_params(func_file)
+                params['run'] = run_name
+                params['ID'] = ID
+                params['task'] = task_name
+                params['acq'] = acq_name
+                acq_parameters.append(params)
 
                 # Full processing only for the first motor task, the others will be co-registered
                 if task_name == 'motor' and i_func == 0:
@@ -292,3 +302,7 @@ for ID_nb, ID in enumerate(IDs):
 
     print(f'=== Preprocessing done for : {ID} ===', flush=True)
     print("=========================================", flush=True)
+
+df = pd.DataFrame(acq_parameters)
+df_ordered = df[['ID', 'task', 'acq', 'run', 'EchoTime', 'RepetitionTime', 'FlipAngle', 'NumberOfVolumes']]
+df_ordered.to_csv(os.path.join(derivatives_dir, "processing", "acquisition_parameters.csv"), index=False)
