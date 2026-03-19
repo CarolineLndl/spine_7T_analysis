@@ -25,7 +25,6 @@ while [[ $# -gt 0 ]]; do
         --denoising) RUN_DENOISING=true; shift;;
         --firstlevel) RUN_FIRSTLEVEL=true; shift;;
         --secondlevel) RUN_SECONDLEVEL=true; shift;;
-        --figures) RUN_FIGURES=true; shift;;
         --redo) REDO=true; shift;;
       *) echo "Unknown argument $1"; exit 1 ;;
     esac
@@ -37,7 +36,7 @@ if [ "${RUN_PREPROSS}" = false ] && \
    [ "${RUN_SECONDLEVEL}" = false ] && \
    [ "${RUN_FIGURES}" = false ]; then
     echo "ERROR: No processing step selected."
-    echo "Use --preprocess, --denoising, --firstlevel, --secondlevel and/or --figures"
+    echo "Use --preprocess, --denoising, --firstlevel and/or  --secondlevel"
     exit 1
 fi
 
@@ -134,22 +133,4 @@ if [ "${RUN_SECONDLEVEL}" = true ]; then
     echo "kill ${PID}"
     wait ${PID}
     echo "Finished second level analysis!"
-fi
-
-# --------------------------
-# Run figures
-# --------------------------
-
-if [ "${RUN_FIGURES}" = true ]; then
-    echo "Starting figure generation..."
-    nohup python -u ../code/figure_workflow.py --path-data "${PATH_DATA}" --ids "${IDs[@]}" "${TASKS_ARG[@]}" --redo "${REDO}" \
-    > "nohup_figures_${timestamp}.txt" 2>&1 &
-
-    PID=$!
-    echo "Figure generation launched in background."
-    echo "Log file: log/nohup_figures_${timestamp}.txt"
-    echo "To stop the process, run:"
-    echo "kill ${PID}"
-    wait ${PID}
-    echo "Finished figure generation!"
 fi
