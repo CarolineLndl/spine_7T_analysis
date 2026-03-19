@@ -567,7 +567,7 @@ class TSNR_main:
 
         return list_baseline_tsnr, list_slicewise_tsnr
 
-    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=False):
+    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,task_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=False):
         
         if IDs is None:
             raise ValueError("Please provide a list of participant IDs (e.g., _.stc(IDs=['A001','A002'])).")
@@ -595,18 +595,18 @@ class TSNR_main:
             mask_data = None
 
         if not os.path.exists(fname_tsnr_avg) or redo:
-            print(fname_tsnr_avg)
             for i,ID in enumerate(IDs):
                 tsnr_path=self.first_level_dir.format("tsnr",ID)
                 tsnr_basename=tsnr_fnames[i].split("moco")[0]
                 fname_tsnr_in_template=glob.glob(tsnr_basename + "moco_tsnr_in_PAM50.nii.gz")[0]
 
-                nii_roi = count_roi_in_template(tsnr_fnames[i],
+                nii_roi = count_roi_in_template(os.path.dirname(tsnr_fnames[i]),
                                                      ID, 
+                                                     task_name,
                                                      acq_name,
-                                                     seg_fnames[i],
-                                                     warp_fnames[i],
                                                      fname_template,
+                                                     warp_fnames[i],
+                                                     os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"]),
                                                      redo)
 
                 nii_tsnr = nib.load(fname_tsnr_in_template)
@@ -632,22 +632,7 @@ class TSNR_main:
             nib.save(nii_tsnr_avg, fname_tsnr_avg)
 
         return fname_tsnr_avg
-     
-    def count_roi_in_template(self,fname, ID, tag, fname_seg, fname_warp_from_func_to_template, fname_template, redo):
-            fname_ones_in_func = os.path.join(os.path.dirname(fname), f"sub-{ID}_{tag}_ones.nii.gz")
-            fname_ones_in_template = os.path.join(os.path.dirname(fname), f"sub-{ID}_{tag}_ones_in_PAM50.nii.gz")
-            if not os.path.exists(fname_ones_in_func) or redo:
-                nii_tmp = nib.load(fname_seg)
-                data_ones = np.ones_like(nii_tmp.get_fdata())
-                nii_ones = nib.Nifti1Image(data_ones, affine=nii_tmp.affine, header=nii_tmp.header)
-                nib.save(nii_ones, fname_ones_in_func)
 
-            if not os.path.exists(fname_ones_in_template) or redo:
-                cmd_coreg = f"sct_apply_transfo -i {fname_ones_in_func} -d {fname_template} -w {fname_warp_from_func_to_template} -o {fname_ones_in_template}"
-                os.system(cmd_coreg)
-            nii_roi = nib.load(fname_ones_in_template)
-            return nii_roi
-    
     def find_moco_for_tsnr_calculation(self,ID, task, acq_name):
         files = glob.glob(os.path.join(
             self.config["raw_dir"],

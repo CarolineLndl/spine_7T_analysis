@@ -83,6 +83,7 @@ for acq_name in config["design_exp"]["acq_names"]:
         i_fnames_runs=[]
         tsnr_path=first_level_dir.format("tsnr",ID)
         dirs = [d for d in os.listdir(tsnr_path) if os.path.isdir(os.path.join(tsnr_path, d))]
+        
 
         #select rest folder if exists otherwise take motor folder
         rest_dirs = [d for d in dirs if "rest" in d and acq_name in d]
@@ -91,12 +92,15 @@ for acq_name in config["design_exp"]["acq_names"]:
         else:
             selected_dirs = [d for d in dirs if acq_name in d]
         
+        task_name=selected_dirs[0].split("_")[0].split("-")[1]
+        
         tsnr_id_fname.append(glob.glob(tsnr_path +"/"+ selected_dirs[0] + "/*_moco_tSNR.nii.gz")[0])
         cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
         warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
 
     fname_avg_tsnr=tsnr_ana.generate_average_tsnr_in_pam50(
         IDs=IDs,
+        task_name=task_name,
         acq_name=acq_name,
         tsnr_fnames=tsnr_id_fname,
         seg_fnames=cord_seg_file,
@@ -118,7 +122,7 @@ print("Number of Participant included : ", len(IDs), flush=True)
 print("===================================", flush=True)
 print("")
 
-common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
+common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz").format("glm")
 
 metrics_csv_pair=[];values_csv_pair=[]
 for task_name in ["motor"]:
