@@ -109,6 +109,14 @@ for ID_nb, ID in enumerate(IDs):
     #---------------Anat preprocessing ---------------------------------------------------
     raw_anat = glob.glob(os.path.join(preprocessing_dir.format(ID), "anat", config["preprocess_f"]["anat_raw"].format(ID,"*")))[0]
 
+    fname_anat_raw = glob.glob(os.path.join(config["raw_dir"], f"sub-{ID}", "anat", config["preprocess_f"]["anat_raw"].format(ID,"*")))[0]
+    params = utils.extract_params(fname_anat_raw)
+    params['run'] = ""
+    params['ID'] = ID
+    params['task'] = "anat"
+    params['acq'] = "anat"
+    acq_parameters.append(params)
+
     #------------------------------------------------------------------
     #------ Segmentation of the anatomical image
     #------------------------------------------------------------------
