@@ -567,7 +567,7 @@ class TSNR_main:
 
         return list_baseline_tsnr, list_slicewise_tsnr
 
-    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,task_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=False):
+    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,task_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=redo):
         
         if IDs is None:
             raise ValueError("Please provide a list of participant IDs (e.g., _.stc(IDs=['A001','A002'])).")
@@ -604,9 +604,9 @@ class TSNR_main:
                                                      ID, 
                                                      task_name,
                                                      acq_name,
-                                                     fname_template,
+                                                     tsnr_fnames[i],
                                                      warp_fnames[i],
-                                                     os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"]),
+                                                     os.path.join(fname_template),
                                                      redo)
 
                 nii_tsnr = nib.load(fname_tsnr_in_template)
@@ -1427,6 +1427,13 @@ def count_roi_in_template(path_output, ID, task, acq_name, fname_func, fname_war
                           fname_template, redo):
     fname_ones_in_func = os.path.join(path_output, f"sub-{ID}_task-{task}_acq-{acq_name}_ones.nii.gz")
     fname_ones_in_template = os.path.join(path_output, f"sub-{ID}_task-{task}_acq-{acq_name}_ones_in_PAM50.nii.gz")
+    print(path_output)
+    print(ID)
+    print(task)
+    print(acq_name)
+    print(fname_func)
+    print(fname_warp_from_func_to_template)
+    print(fname_template)
     if not os.path.exists(fname_ones_in_func) or redo:
         nii_tmp = nib.load(fname_func)
         data_ones = np.ones_like(nii_tmp.get_fdata())

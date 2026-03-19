@@ -317,7 +317,7 @@ class Figures_main:
 
             # Find y_slice along y-axis with maximum intensity
             crop_data = statmap_data[x_min:x_max, :, z_min:z_max]
-            y_slice = np.argmax(np.nanmax(crop_data, axis=(0, 2)))  # max over x and z, returns y index
+            y_slice = 72#np.argmax(np.nanmax(crop_data, axis=(0, 2)))  # max over x and z, returns y index
             cor_slice = statmap_data[x_min:x_max,y_slice,z_min:z_max]
             cor_slice = np.where(cor_slice > stat_min, cor_slice, np.nan)
             cor_slice=cor_slice.T
