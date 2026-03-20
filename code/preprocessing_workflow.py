@@ -314,3 +314,6 @@ for ID_nb, ID in enumerate(IDs):
 df = pd.DataFrame(acq_parameters)
 df_ordered = df[['ID', 'task', 'acq', 'run', 'EchoTime', 'RepetitionTime', 'FlipAngle', 'NumberOfVolumes']]
 df_ordered.to_csv(os.path.join(derivatives_dir, "processing", "acquisition_parameters.csv"), index=False)
+
+# Print participant metrics
+print(f"Number of particiants that have rest scans: {df_ordered[df_ordered['task'] == 'rest']['ID'].nunique()}", flush=True)
