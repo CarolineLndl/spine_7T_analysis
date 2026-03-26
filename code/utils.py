@@ -1,5 +1,5 @@
 # Main imports ------------------------------------------------------------
-import sys,os, gzip
+import sys, os, gzip, copy
 import numpy as np
 import nibabel as nib
 import json, glob
@@ -348,3 +348,36 @@ def get_latest_dir(base_dir):
     # Pick the latest one
     latest_folder = max(dated, key=lambda x: x[1])[0]
     return str(latest_folder) + "/"
+
+
+def print_participant_metrics(participants_tsv, IDs):
+    df_filtered = copy.deepcopy(participants_tsv)
+    for ID in participants_tsv['participant_id']:
+        if ID not in IDs:
+            df_filtered = df_filtered[df_filtered['participant_id'] != ID]
+    print("=== Participant metrics ===", flush=True)
+    print(f"Age: {df_filtered['age'].mean()} ± {df_filtered['age'].std()}, [{df_filtered['age'].min()}, {df_filtered['age'].max()}]", flush=True)
+    print(f"Females: {df_filtered['sex'].value_counts().get('F', 0)}, Males: {df_filtered['sex'].value_counts().get('M', 0)}", flush=True)
+
+
+def extract_params(fname_nii):
+    fname_json = fname_nii.replace(".nii.gz", ".json")
+    if not os.path.exists(fname_nii):
+        raise FileNotFoundError(f"NIfTI file not found for {fname_nii}")
+    if not os.path.exists(fname_json):
+        raise FileNotFoundError(f"JSON file not found for {fname_json}")
+
+    params = {}
+
+    with open(fname_json, 'r') as json_file:
+        json_data = json.load(json_file)
+
+    params['RepetitionTime'] = json_data.get('RepetitionTime', None)
+    params['EchoTime'] = json_data.get('EchoTime', None)
+    params['FlipAngle'] = json_data.get('FlipAngle', None)
+
+    nii = nib.load(fname_nii)
+    if nii.ndim >= 4:
+        params['NumberOfVolumes'] = nii.shape[3]
+
+    return params
