@@ -368,7 +368,7 @@ class GLM_main:
                 logp_max_size_img = nib.load(stat_map_file+ 'logp_max_size.nii.gz')
                 logp_max_size_data = logp_max_size_img.get_fdata()
                 #threshold the logp_max_size map at p<0.05
-                logp_max_size_data_thresholded = logp_max_size_data > -np.log10(0.05)
+                logp_max_size_data_thresholded = logp_max_size_data > -np.log10(0.01)
                 #mask the t-map with the thresholded logp_max_size map
                 t_img = nib.load(stat_map_file+ 't.nii.gz')
                 t_data = t_img.get_fdata()
@@ -567,7 +567,7 @@ class TSNR_main:
 
         return list_baseline_tsnr, list_slicewise_tsnr
 
-    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,task_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=redo):
+    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,task_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=False):
         
         if IDs is None:
             raise ValueError("Please provide a list of participant IDs (e.g., _.stc(IDs=['A001','A002'])).")
