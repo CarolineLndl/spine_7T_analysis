@@ -321,6 +321,45 @@ def tSNR(ID=None,i_img=None,o_dir=None,mask=None,warp_img=None,structure='spinal
 
     return o_txt, img_tSNR
 
+def compute_SNR(ID=None,i_file=None,o_dir=None,mask_file=None,redo=False):
+    '''
+        This function calculate the SNR within the brain or spinal cord
+        
+        Attributes:
+        ----------
+        config: load config file
+        ID: participant ID
+        i_file: 3d mean func image filename
+        o_dir: output directory
+        mask_file: 3d mask image filename
+        redo: put True to re-run the analysis on existing file (default=False)
+    
+    '''
+    if i_file is None:
+        raise ValueError("Please provide the input filename, (i_file='/mydir/sub-1_mean.nii.gz')")
+    
+    if mask_file is None:
+        raise ValueError("Please provide the mask filename, (mask_file='/mydir/sub-1_mask.nii.gz')")
+
+    # Load mean motion corrected image
+    i_img = nib.load(i_file)
+    i_data = i_img.get_fdata()
+
+    # Load spinal cord mask
+    mask_img = nib.load(mask_file)
+    mask_data = mask_img.get_fdata().astype(bool)
+
+    # Apply mask
+    signal_in_mask = i_data[mask_data]
+
+    # Compute sSNR
+    mean_signal = np.mean(signal_in_mask)
+    std_signal = np.std(signal_in_mask)
+
+    sSNR = mean_signal / std_signal
+
+    return sSNR
+
 
 def get_latest_dir(base_dir):
     """
