@@ -532,8 +532,8 @@ class TSNR_main:
                     self.fname_metrics={"ssnr": os.path.join(self.path_tsnr, "ssnr_metrics.csv"), 
                                              "tsnr": os.path.join(self.path_tsnr, "tsnr_metrics.csv"), }
                     if space=="native" and fname_tsnr is not None:
-                        self.fname_metrics["tsnr"] = os.path.join(self.path_tsnr, "tsnr_ratio_metrics.csv")
                         if native_gm_mask:
+                            self.fname_metrics["tsnr"] = os.path.join(self.path_tsnr, "tsnr_ratio_metrics.csv")
                             fname_mask=fname_gm_mask
                             tsnr_mean_gm = extract_mean_within_mask(fname_tsnr, fname_gm_mask)
                             tsnr_mean_wm = extract_mean_within_mask(fname_tsnr, fname_wm_mask)

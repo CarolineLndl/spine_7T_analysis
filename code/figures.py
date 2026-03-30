@@ -772,7 +772,7 @@ class Figures_main:
         
         return output_fname
 
-    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, redo=False):
+    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, redo=False):
         '''
         Create matrix of correlation boxplots with matching box outline and whisker colors.
         '''
@@ -942,7 +942,9 @@ class Figures_main:
                         fontsize=7, color=bracket_color)
             
             ax.set_xlabel('')
-            ax.set_ylabel(y_data, fontsize=8, fontname="Arial",fontweight='bold')
+            y_label=specify_y_label if specify_y_label else y_data
+
+            ax.set_ylabel(y_label, fontsize=8, fontname="Arial",fontweight='bold')
             ax.tick_params(axis='y', labelsize=7)
             
 
@@ -970,7 +972,7 @@ class Figures_main:
         
         return output_fname
 
-    def combine_plots(self, output_fname, row1_files, row2_files, row1_titles=["tSNR","GLM"], 
+    def combine_plots(self, output_fname, row1_files, row2_files, row1_titles=["SNR","GLM"], 
                   row2_titles=None, figsize=(3.15, 10), row2_width_scale=0.9, redo=False):
 
         if not os.path.exists(output_fname) or redo:
