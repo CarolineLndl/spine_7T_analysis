@@ -321,7 +321,7 @@ def tSNR(ID=None,i_img=None,o_dir=None,mask=None,warp_img=None,structure='spinal
 
     return o_txt, img_tSNR
 
-def compute_SNR(ID=None,i_file=None,o_dir=None,mask_file=None,redo=False):
+def compute_SNR(i_file=None,mask_file=None,redo=False):
     '''
         This function calculate the SNR within the brain or spinal cord
         
@@ -330,7 +330,6 @@ def compute_SNR(ID=None,i_file=None,o_dir=None,mask_file=None,redo=False):
         config: load config file
         ID: participant ID
         i_file: 3d mean func image filename
-        o_dir: output directory
         mask_file: 3d mask image filename
         redo: put True to re-run the analysis on existing file (default=False)
     
