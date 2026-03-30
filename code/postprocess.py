@@ -442,7 +442,7 @@ class TSNR_main:
         #self.fname_tsnr_baseline_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_baseline_avg_in_PAM50.nii.gz")
         #self.fname_tsnr_slicewise_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_slicewise_avg_in_PAM50.nii.gz")
 
-    def generate_tsnr_maps_and_csv(self,space="native",fname_mask=None,native_space_mask=None):
+    def generate_tsnr_maps_and_csv(self,space="native",fname_mask=None,native_gm_mask=None):
         '''
         tSNR extraction can be either be done in native or PAM50 space:
         space: str
@@ -502,9 +502,9 @@ class TSNR_main:
                         cmd_coreg = f"sct_apply_transfo -i {fname_tsnr} -d {fname_template} -w {fname_warp_from_func_to_template} -o {fname_tsnr_in_template} -x nn"
                         os.system(cmd_coreg)
                     
-                    if native_space_mask:
+                    if native_gm_mask:
                         mask_PAM50=os.path.join(self.config["code_dir"], "template",self.config["PAM50_gm"])
-                        fname_native_mask = fname_tsnr.split("tSNR")[0] + "gm.nii.gz"
+                        fname_gm_mask = fname_tsnr.split("tSNR")[0] + "gm.nii.gz"
                         fname_wm_mask = fname_tsnr.split("tSNR")[0] + "wm.nii.gz"
                         fname_warp_from_template_to_func = os.path.join(
                             self.config["raw_dir"],
@@ -513,22 +513,22 @@ class TSNR_main:
                             tag,
                             f"sub-{ID}_{tag}_from-PAM50_to_func_mode-image_xfm.nii.gz")
                         
-                        if not os.path.exists(fname_native_mask) or self.redo:
-                            cmd_coreg = f"sct_apply_transfo -i {mask_PAM50} -d {fname_tsnr} -w {fname_warp_from_template_to_func} -o {fname_native_mask} -x nn"
-                            cmd_bin=f"fslmaths {fname_native_mask} -thr 0.1 -bin {fname_native_mask}" # binarize the mask
+                        if not os.path.exists(fname_gm_mask) or self.redo:
+                            cmd_coreg = f"sct_apply_transfo -i {mask_PAM50} -d {fname_tsnr} -w {fname_warp_from_template_to_func} -o {fname_gm_mask} -x nn"
+                            cmd_bin=f"fslmaths {fname_gm_mask} -thr 0.1 -bin {fname_gm_mask}" # binarize the mask
                             os.system(cmd_coreg)
                             os.system(cmd_bin)
                         
                         if not os.path.exists(fname_wm_mask) or self.redo:
                             fname_seg=os.path.join(self.config["raw_dir"],self.config["preprocess_dir"]["main_dir"].format(ID),"func",tag,f"sub-{ID}_{tag}_bold_moco_mean_seg.nii.gz")
-                            cmd_bin=f"fslmaths {fname_seg} -sub {fname_native_mask} -thr 0.1 -bin {fname_wm_mask}" # binarize the mask
+                            cmd_bin=f"fslmaths {fname_seg} -sub {fname_gm_mask} -thr 0.1 -bin {fname_wm_mask}" # binarize the mask
                             os.system(cmd_bin)
 
                     # Extract metrics from native space
                     if space=="native" and fname_tsnr is not None:
                         self.fname_tsnr_metrics = os.path.join(self.path_tsnr, "tsnr_metrics.csv")
-                        if native_space_mask:
-                            fname_mask=fname_native_mask
+                        if native_gm_mask:
+                            fname_mask=fname_gm_mask
                         
                         else:
                             fname_mask = os.path.join(
@@ -541,8 +541,8 @@ class TSNR_main:
                         if not os.path.exists(fname_mask):
                             raise RuntimeError(f"Mask file not found: {fname_mask}")
                         
-                        if native_space_mask:
-                            tsnr_mean_gm = extract_mean_within_mask(fname_tsnr, fname_native_mask)
+                        if native_gm_mask:
+                            tsnr_mean_gm = extract_mean_within_mask(fname_tsnr, fname_gm_mask)
                             tsnr_mean_wm = extract_mean_within_mask(fname_tsnr, fname_wm_mask)
                             tsnr_mean=tsnr_mean_gm/tsnr_mean_wm
                         else:
