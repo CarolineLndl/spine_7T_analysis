@@ -819,14 +819,16 @@ class EpiComparison:
         #              '106': [1, 11, 15, 19, 21],
         #              'avg': [168]}
 
-        self.fname_fig_epi_comparison = os.path.join(self.path_fig_epi_comparison, f"epi_comparison.png")
+        self.fname_fig_epi_comparison = os.path.join(self.path_fig_epi_comparison, "epi_comparison.png")
         
         if os.path.exists(self.fname_fig_epi_comparison) or self.redo:
-            highlight = {'090': {1: 'sigtot', 3: 'sigtot', 7: 'sigtot', 9: 'geo'},
-                        '094': {1: 'sigtot', 5: 'geo', 27: 'sigtot'},
-                        '095': {1: 'sigvert', 3: 'sigvert', 21: 'sigtot'},
-                        '101': {1: 'geo', 5: 'sigtot', 27: 'sigvert'},
-                        '106': {1: 'sigtot', 11: 'geo', 15: 'geo', 19: 'geo'}}
+            highlight = {
+                # '090': {1: 'sigtot', 3: 'sigtot', 7: 'sigtot', 9: 'geo'},
+                '094': {1: 'sigtot', 5: 'geo', 27: 'sigtot'},
+                '095': {1: 'sigvert', 3: 'sigvert', 21: 'sigtot'},
+                '100': {1: 'sigtot', 5: 'sigtot', 7: 'sigtot', 9: 'sigtot', 19: 'sigvert'},
+                '101': {1: 'geo', 5: 'sigtot', 27: 'sigvert'},
+                '106': {1: 'sigtot', 11: 'geo', 15: 'geo', 19: 'geo'}}
 
             color = {'sigtot': '#2ca02c', 'sigvert': '#d62728', 'geo': '#9467bd'}
 
@@ -839,7 +841,7 @@ class EpiComparison:
 
             ids_to_show = []
             # 094, 096, '100'
-            chose_if_available = ('090', '094', '095', '101', '106')
+            chose_if_available = ('094', '095', '100', '101', '106')
 
             for i_part in range(n_part):
                 ID = chose_if_available[i_part] if chose_if_available[i_part] in self.IDs else self.IDs[i_part]
@@ -932,9 +934,9 @@ class EpiComparison:
                     color_slicewise = '#ff7f0e'
                     if idx == len(range_slices) - 1 and i_id == 0:
                         legend_fontsize = 10
-                        legend_elements = [Patch(facecolor='white', edgecolor=color_baseline, label='Baseline',
+                        legend_elements = [Patch(facecolor='white', edgecolor=color_baseline, label='shimBase',
                                                 linewidth=1.5),
-                                        Patch(facecolor='white', edgecolor=color_slicewise, label='Slicewise',
+                                        Patch(facecolor='white', edgecolor=color_slicewise, label='shimSlice',
                                                 linewidth=1.5)]
                         axs_baseline[idx].legend(handles=legend_elements, loc=(0, -0.75), fontsize=legend_fontsize)
 
