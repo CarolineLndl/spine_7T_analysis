@@ -258,22 +258,3 @@ Should be run after preprocessing and denoising.
 bash "${PATH_CODE}/code/run_all_processing.sh" --path-data "${PATH_DATA}" --path-code "${PATH_CODE}" --ids "${IDs[@]}" --tasks motor --firstlevel
 
 ```
-
-
-### 2.4 Figures  🧹
-
-Should be run after the first level analysis.
-
-#### Description of the figure steps
-- **I. tSNR** Average tSNR maps in the PAM50 template are computed and averaged across participants. Average tSNR in for each participant is also extracted in its native space. 
-
-#### Run figures
-- Runs figure generation steps automatically with output log from STDOUT.
-- By default, the steps are not rerun if some outputs already exist.
-- If you already have setup `PATH_CODE` and `PATH_DATA`, you don't need to specify `--path-data` and `--path-code`.
-- Specify individuals to process (`--ids 090 101 106`) or `IDs=(090 101 106)` and (`--ids "${IDs[@]}"`), the default option runs on all participants in the `participants.tsv`. Both tasks need to be used to generate the figures.
-
-```bash
-bash "${PATH_CODE}/code/run_all_processing.sh" --path-data "${PATH_DATA}" --path-code "${PATH_CODE}" --ids "${IDs[@]}" --figures
-
-```
