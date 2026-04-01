@@ -81,8 +81,8 @@ for acq_name in config["design_exp"]["acq_names"]:
     warp_file=[]
     for ID in IDs:
         i_fnames_runs=[]
-        tsnr_path=first_level_dir.format("tsnr",ID)
-        dirs = [d for d in os.listdir(tsnr_path) if os.path.isdir(os.path.join(tsnr_path, d))]
+        snr_path=first_level_dir.format("snr",ID)
+        dirs = [d for d in os.listdir(snr_path) if os.path.isdir(os.path.join(snr_path, d))]
         
 
         #select rest folder if exists otherwise take motor folder
@@ -91,10 +91,10 @@ for acq_name in config["design_exp"]["acq_names"]:
             selected_dirs = rest_dirs
         else:
             selected_dirs = [d for d in dirs if acq_name in d]
-        
+
         task_name=selected_dirs[0].split("_")[0].split("-")[1]
         
-        tsnr_id_fname.append(glob.glob(tsnr_path +"/"+ selected_dirs[0] + "/*_moco_tSNR.nii.gz")[0])
+        tsnr_id_fname.append(glob.glob(snr_path +"/"+ selected_dirs[0] + "/*_moco_tSNR.nii.gz")[0])
         cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
         warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
 
@@ -108,9 +108,19 @@ for acq_name in config["design_exp"]["acq_names"]:
         fname_mask=mask)
     
     output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
-    fname_csv=glob.glob(tsnr_path.split("sub")[0] +  "/tsnr_metrics_reduced.csv")[0]
-    stat_file=glob.glob(tsnr_path.split("sub")[0] +  "/tsnr_metrics_reduced_stats.csv")[0]
-    box_plot=figures.boxplots(csv_file=fname_csv,output_fname=f"{output_fig}/n{len(IDs)}_tsnr_boxplot.png",stats_file=stat_file,x_data="acq",x_order=["shimBase","shimSlice"],indiv_values=True,y_data="Mean tSNR",redo=True)
+    
+    box_plot={}
+    for metric in ["tsnr","ssnr"]:
+        fname_csv=glob.glob(snr_path.split("sub")[0] +  f"/{metric}*_metrics_reduced.csv")[0]
+        stat_file=glob.glob(snr_path.split("sub")[0] +  f"/{metric}*_metrics_reduced_stats.csv")[0]
+        (ymin, ymax) = (6, 17) if metric == "tsnr" else (1, 5)
+        y_label="temporal SNR" if metric == "tsnr" else "spatial SNR"
+        box_plot[metric]=figures.boxplots(csv_file=fname_csv,output_fname=f"{output_fig}/n{len(IDs)}_{metric}_boxplot.png",
+                                  ymin=ymin, ymax=ymax,stats_file=stat_file,
+                                  specify_y_label=y_label,
+                                  x_data="acq",x_order=["shimBase","shimSlice"],
+                                  indiv_values=True,
+                                  y_data=metric,redo=True)
 
 #------------------------------------------------------------------
 #------ Run second level analysis

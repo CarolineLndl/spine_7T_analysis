@@ -25,7 +25,7 @@ from matplotlib.patches import Patch, Arrow
 from matplotlib.legend_handler import HandlerPatch
 import matplotlib.gridspec as gridspec
 
-from utils import compute_tsnr_map, extract_mean_within_mask
+from utils import compute_tsnr_map, compute_SNR, extract_mean_within_mask
 #####################################################
 class GLM_main:
     '''
@@ -437,15 +437,20 @@ class TSNR_main:
         self.redo = redo
         self.first_level_dir = os.path.join(self.config["raw_dir"], self.config["first_level"]["dir"])  # directory of the derivatives data
         self.second_level_dir= os.path.join(self.config["raw_dir"], self.config["second_level"]["dir"])
-        self.path_tsnr = os.path.join(self.first_level_dir.format("tsnr","").split("sub")[0])
-        self.path_tsnr_inTemplate = os.path.join(self.second_level_dir.format("tsnr"))
-        #self.fname_tsnr_baseline_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_baseline_avg_in_PAM50.nii.gz")
-        #self.fname_tsnr_slicewise_avg = os.path.join(self.path_fig_tsnr, "data", "tsnr_slicewise_avg_in_PAM50.nii.gz")
+        self.path_tsnr = os.path.join(self.first_level_dir.format("snr","").split("sub")[0])
+        self.path_tsnr_inTemplate = os.path.join(self.second_level_dir.format("snr"))
 
-        self.fname_tsnr_metrics = os.path.join(self.path_tsnr, "tsnr_metrics.csv")
-
-    def generate_tsnr_maps_and_csv(self):
-        df_tsnr = pd.DataFrame(columns=["IDs", "task", "acq", "Mean tSNR"])
+    def generate_tsnr_maps_and_csv(self,space="native",fname_mask=None,native_gm_mask=None):
+        '''
+        tSNR extraction can be either be done in native or PAM50 space:
+        space: str
+            choose the option "native" or "PAM50"
+        fname_mask: str
+            define the path of the mask otherwise the cord will be automatically selected either in native or PAM50 space
+        '''
+        dfs={}
+        dfs["tsnr"] = pd.DataFrame(columns=["IDs", "task", "acq", "tsnr"])
+        dfs["ssnr"] = pd.DataFrame(columns=["IDs", "task", "acq", "ssnr"])
 
         print("=== Compute tSNR map on longest moco neighbour run ===", flush=True)
         # Find the minimum number of volumes across all runs to standardize tSNR calculation
@@ -464,6 +469,7 @@ class TSNR_main:
         # Minimum number of volumes across all runs: 30 (2026-01-28)
         # Compute_tsnr
         for ID in self.IDs:
+            print(ID)
             for task in self.config["design_exp"]["task_names"]:
                 for acq_name in self.config["design_exp"]["acq_names"]:
                     tag = "task-" + task + "_acq-" + acq_name
@@ -472,10 +478,15 @@ class TSNR_main:
                     if selected_file is None:
                         continue
 
+                    selected_mean_file=selected_file.split('.')[0] + "_mean.nii.gz"    
+
                     # Compute tSNR map in native space
                     path_tsnr_sub_folder = os.path.join(self.path_tsnr, f"sub-{ID}", tag)
                     fname_tsnr = compute_tsnr_map(selected_file, path_tsnr_sub_folder, self.redo, min_vols_for_tsnr)
-
+                    
+                    #seg file in native space
+                    fname_mask = os.path.join(self.config["raw_dir"],self.config["preprocess_dir"]["main_dir"].format(ID),"func",tag,f"sub-{ID}_{tag}_bold_moco_mean_seg.nii.gz")
+                    
                     # Warp tSNR in PAM50 space
                     fname_tsnr_in_template = fname_tsnr.replace("_bold_moco_tSNR.nii.gz",
                                                                 "_bold_moco_tsnr_in_PAM50.nii.gz")
@@ -495,45 +506,87 @@ class TSNR_main:
                         fname_template = os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"])
                         cmd_coreg = f"sct_apply_transfo -i {fname_tsnr} -d {fname_template} -w {fname_warp_from_func_to_template} -o {fname_tsnr_in_template} -x nn"
                         os.system(cmd_coreg)
-
-                    # Extract metrics from native space
-                    if fname_tsnr is not None:
-                        fname_mask = os.path.join(
+                    
+                    if native_gm_mask:
+                        mask_PAM50=os.path.join(self.config["code_dir"], "template",self.config["PAM50_gm"])
+                        fname_gm_mask = fname_tsnr.split("tSNR")[0] + "gm.nii.gz"
+                        fname_wm_mask = fname_tsnr.split("tSNR")[0] + "wm.nii.gz"
+                        fname_warp_from_template_to_func = os.path.join(
                             self.config["raw_dir"],
                             self.config["preprocess_dir"]["main_dir"].format(ID),
                             "func",
                             tag,
-                            f"sub-{ID}_{tag}_bold_moco_mean_seg.nii.gz")
+                            f"sub-{ID}_{tag}_from-PAM50_to_func_mode-image_xfm.nii.gz")
+                        
+                        if not os.path.exists(fname_gm_mask) or self.redo:
+                            cmd_coreg = f"sct_apply_transfo -i {mask_PAM50} -d {fname_tsnr} -w {fname_warp_from_template_to_func} -o {fname_gm_mask} -x nn"
+                            cmd_bin=f"fslmaths {fname_gm_mask} -thr 0.1 -bin {fname_gm_mask}" # binarize the mask
+                            os.system(cmd_coreg)
+                            os.system(cmd_bin)
+                        
+                        if not os.path.exists(fname_wm_mask) or self.redo:
+                            cmd_bin=f"fslmaths {fname_mask} -sub {fname_gm_mask} -thr 0.1 -bin {fname_wm_mask}" # binarize the mask
+                            os.system(cmd_bin)
+
+                    # Extract metrics from native space
+                    self.fname_metrics={"ssnr": os.path.join(self.path_tsnr, "ssnr_metrics.csv"), 
+                                             "tsnr": os.path.join(self.path_tsnr, "tsnr_metrics.csv"), }
+                    if space=="native" and fname_tsnr is not None:
+                        if native_gm_mask:
+                            self.fname_metrics["tsnr"] = os.path.join(self.path_tsnr, "tsnr_ratio_metrics.csv")
+                            fname_mask=fname_gm_mask
+                            tsnr_mean_gm = extract_mean_within_mask(fname_tsnr, fname_gm_mask)
+                            tsnr_mean_wm = extract_mean_within_mask(fname_tsnr, fname_wm_mask)
+                            tsnr_mean=tsnr_mean_gm/tsnr_mean_wm
+                        else:
+                            tsnr_mean = extract_mean_within_mask(fname_tsnr, fname_mask)
+
+                    # Extract metrics from native space
+                    elif space=='PAM50' and fname_tsnr_in_template is not None:
+                        self.fname_metrics["tsnr"] = os.path.join(self.path_tsnr, "tsnr_metrics_PAM50.csv")
+                        if fname_mask is None:
+                            fname_mask = os.path.join(
+                                self.config["code_dir"],
+                                "template",
+                                "PAM50_cord.nii.gz")
 
                         if not os.path.exists(fname_mask):
                             raise RuntimeError(f"Mask file not found: {fname_mask}")
 
-                        tsnr_mean = extract_mean_within_mask(fname_tsnr, fname_mask)
-                        if len(df_tsnr) == 0:
-                            df_tsnr = pd.DataFrame([[ID, task, acq_name.split("+")[0], tsnr_mean]], columns=df_tsnr.columns)
-                        df_tsnr = pd.concat(
-                            [pd.DataFrame([[ID, task, acq_name.split("+")[0], tsnr_mean]], columns=df_tsnr.columns), df_tsnr],
+                        tsnr_mean = extract_mean_within_mask(fname_tsnr_in_template, fname_mask)
+
+                    #extract ssnr
+                    ssnr=compute_SNR(selected_mean_file,fname_mask, self.redo)
+
+                    for metric in ["tsnr","ssnr"]:
+                        values=tsnr_mean if metric=="tsnr" else ssnr
+                        if len(dfs[metric]) == 0:
+                            dfs[metric] = pd.DataFrame([[ID, task, acq_name.split("+")[0], values]], columns=dfs[metric].columns)
+                        dfs[metric] = pd.concat(
+                            [pd.DataFrame([[ID, task, acq_name.split("+")[0], values]], columns=dfs[metric].columns), dfs[metric]],
                             ignore_index=True)
 
         # Keep only 'rest' rows for IDs that have both 'motor' and 'rest'
-        if not os.path.exists(self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv"):
-            ids_with_both = df_tsnr.groupby('IDs')['task'].apply(
-                lambda x: set(['motor', 'rest']).issubset(set(x))
-            )
-            ids_with_both = ids_with_both[ids_with_both].index
-            df_reduced = df_tsnr[~((df_tsnr['IDs'].isin(ids_with_both)) & (df_tsnr['task'] == 'motor'))]
-            df_reduced.to_csv(self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv", index=False)
+        for metric in ["tsnr","ssnr"]:
+            print(self.fname_metrics[metric])
+            if not os.path.exists(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv"):
+                ids_with_both = dfs[metric].groupby('IDs')['task'].apply(
+                    lambda x: set(['motor', 'rest']).issubset(set(x))
+                )
+                ids_with_both = ids_with_both[ids_with_both].index
+                df_reduced = dfs[metric][~((dfs[metric]['IDs'].isin(ids_with_both)) & (dfs[metric]['task'] == 'motor'))]
+                df_reduced.to_csv(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv", index=False)
+                self.pair_ttest(csv_file=self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv",value_col=metric,redo=self.redo)
 
-        if not os.path.exists(self.fname_tsnr_metrics):
-            df_tsnr.to_csv(self.fname_tsnr_metrics, index=False)
+            if not os.path.exists(self.fname_metrics[metric]):
+                dfs[metric].to_csv(self.fname_metrics[metric], index=False)
+                self.pair_ttest(csv_file=self.fname_metrics[metric],value_col=metric,redo=self.redo)
 
-        self.pair_ttest(csv_file=self.fname_tsnr_metrics.split(".csv")[0]+"_reduced.csv",redo=self.redo)
-        
 
     def _extract_baseline_and_slicewise_tsnr_from_csv(self):
         name_baseline = [a for a in self.config["design_exp"]["acq_names"] if a.find("Base") != -1][0]
         name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if a.find("Slice") != -1][0]
-        df_tsnr = pd.read_csv(self.fname_tsnr_metrics)
+        df_tsnr = pd.read_csv(self.fname_metrics['tsnr'])
         list_baseline_tsnr = []
         list_slicewise_tsnr = []
         for ID in self.IDs:
@@ -657,7 +710,7 @@ class TSNR_main:
                     selected_file = f
         return selected_file
     
-    def pair_ttest(self, df=None, csv_file=None, output_fname=None,index='IDs', value_col='Mean tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase',task_filter=None, task_col='task', redo=False):
+    def pair_ttest(self, df=None, csv_file=None, output_fname=None,index='IDs', value_col='tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase',task_filter=None, task_col='task', redo=False):
 
         if output_fname==None and csv_file:
             output_fname=csv_file.split('.csv')[0] + "_stats.csv"
