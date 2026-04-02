@@ -12,15 +12,11 @@
 # Main imports ------------------------------------------------------------
 import re, json, sys, os, glob, argparse
 import pandas as pd
-from nilearn.glm import threshold_stats_img
-import nibabel as nib
-import numpy as np
-from collections import defaultdict
 
 # Get the environment variable PATH_CODE
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-with open(path_code + '/config/config_spine_7t_fmri.json') as config_file: # the notebook should be in 'xx/notebook/' folder #config_proprio
+with open(os.path.join(path_code, "config", "config_spine_7t_fmri.json")) as config_file: # the notebook should be in 'xx/notebook/' folder #config_proprio
     config = json.load(config_file) # load config file should be open first and the path inside modified
 
 parser = argparse.ArgumentParser()
@@ -40,7 +36,7 @@ path_data = os.path.abspath(args.path_data)
 config["raw_dir"]=path_data
 config["code_dir"]=path_code
 
-participants_tsv = pd.read_csv(path_code + '/config/participants.tsv', sep='\t',dtype={'participant_id': str})
+participants_tsv = pd.read_csv(os.path.join(path_code, "config", "participants.tsv"), sep='\t', dtype={'participant_id': str})
 
 new_IDs=[]
 if IDs == [""]:
@@ -53,7 +49,7 @@ if tasks != [""]:
     config["design_exp"]["task_names"] = tasks
 
 #Import scripts
-sys.path.append(path_code + "/code/") # Change this line according to your directory
+sys.path.append(os.path.join(path_code, "code")) # Change this line according to your directory
 import postprocess, preprocess, figures
 
 glm_ana=postprocess.GLM_main(config,IDs=IDs)
@@ -65,7 +61,7 @@ figures=figures.Figures_main(config, IDs=IDs)
 preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["main_dir"])
 denoising_dir= os.path.join(config["raw_dir"], config["denoising"]["dir"])
 manual_dir = os.path.join(config["raw_dir"], config["manual_dir"])
-main_fig_dir = os.path.join(config["raw_dir"], "derivatives/processing/figures/")
+main_fig_dir = os.path.join(config["raw_dir"], "derivatives", "processing", "figures")
 fig_task_dir = os.path.join(main_fig_dir, "task")
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 second_level_dir = os.path.join(config["raw_dir"], config["second_level"]["dir"])
@@ -94,11 +90,11 @@ for acq_name in config["design_exp"]["acq_names"]:
 
         task_name=selected_dirs[0].split("_")[0].split("-")[1]
         
-        tsnr_id_fname.append(glob.glob(snr_path +"/"+ selected_dirs[0] + "/*_moco_tSNR.nii.gz")[0])
+        tsnr_id_fname.append(glob.glob(os.path.join(snr_path, selected_dirs[0], "*_moco_tSNR.nii.gz"))[0])
         cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
         warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
 
-    fname_avg_tsnr=tsnr_ana.generate_average_tsnr_in_pam50(
+    fname_avg_tsnr = tsnr_ana.generate_average_tsnr_in_pam50(
         IDs=IDs,
         task_name=task_name,
         acq_name=acq_name,
@@ -107,20 +103,20 @@ for acq_name in config["design_exp"]["acq_names"]:
         warp_fnames=warp_file,
         fname_mask=mask)
     
-    output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
-    
+    output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
+
     box_plot={}
-    for metric in ["tsnr","ssnr"]:
-        fname_csv=glob.glob(snr_path.split("sub")[0] +  f"/{metric}*_metrics_reduced.csv")[0]
-        stat_file=glob.glob(snr_path.split("sub")[0] +  f"/{metric}*_metrics_reduced_stats.csv")[0]
+    for metric in ["tsnr", "ssnr"]:
+        fname_csv = glob.glob(os.path.join(snr_path.split("sub")[0], f"{metric}*_metrics_reduced.csv"))[0]
+        stat_file = glob.glob(os.path.join(snr_path.split("sub")[0], f"{metric}*_metrics_reduced_stats.csv"))[0]
         (ymin, ymax) = (6, 17) if metric == "tsnr" else (1, 5)
         y_label="temporal SNR" if metric == "tsnr" else "spatial SNR"
-        box_plot[metric]=figures.boxplots(csv_file=fname_csv,output_fname=f"{output_fig}/n{len(IDs)}_{metric}_boxplot.png",
-                                  ymin=ymin, ymax=ymax,stats_file=stat_file,
+        box_plot[metric] = figures.boxplots(csv_file=fname_csv, output_fname=os.path.join(output_fig, f"{len(IDs)}_{metric}_boxplot.png"),
+                                  ymin=ymin, ymax=ymax, stats_file=stat_file,
                                   specify_y_label=y_label,
-                                  x_data="acq",x_order=["shimBase","shimSlice"],
+                                  x_data="acq", x_order=["shimBase","shimSlice"],
                                   indiv_values=True,
-                                  y_data=metric,redo=True)
+                                  y_data=metric, redo=True)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
@@ -178,28 +174,35 @@ for task_name in ["motor"]:
 #------ Plot group level tSNR and GLM
 #------------------------------------------------------------------
 # select the second level files
-i_fnames_glm_pair=[];i_fnames_tSNR_pair=[]
+i_fnames_glm_pair = [];i_fnames_tSNR_pair=[]
 for task_name in config["design_exp"]["task_names"]:
     for acq_name in config["design_exp"]["acq_names"]:
-        tag="task-" + task_name + "_acq-" + acq_name
-        i_fnames_glm_pair.append(os.path.join(second_level_dir.format(tag),f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
-        i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"),f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
+        tag = "task-" + task_name + "_acq-" + acq_name
+        i_fnames_glm_pair.append(os.path.join(second_level_dir.format(tag), f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
+        i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"), f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
 
-output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
+output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
-bar_plot=figures.bar_plot(csv_pair=metrics_csv_pair,output_fname=f"{output_fig}/n{len(IDs)}_glm_nb_vox.png")
-dist_plot=figures.plot_dist(csv_pair=[values_csv_pair[1],values_csv_pair[0]], maps_name = ["shimSlice","shimBase"],colors = ["#ED263F","#ADA8A8"],output_fname=f"{output_fig}/n{len(IDs)}_glm_distr.png")
+bar_plot=figures.bar_plot(
+    csv_pair=metrics_csv_pair,
+    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_nb_vox.png"))
 
-glm_plot=figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair, 
-                                   output_fname=f"{output_fig}/n{len(IDs)}_glm_avg_map.png",
+dist_plot=figures.plot_dist(
+    csv_pair=[values_csv_pair[1],values_csv_pair[0]],
+    maps_name=["shimSlice","shimBase"],
+    colors=["#ED263F","#ADA8A8"],
+    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_distr.png"))
+
+glm_plot=figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair,
+                                   output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_avg_map.png"),
                                    stat_min=2.3, 
                                    stat_max=6,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
-tsnr_plot=figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair, 
-                                   output_fname=f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png",
+tsnr_plot=figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
+                                   output_fname=os.path.join(output_fig, f"n{len(IDs)}_tsnr_avg_map.png"),
                                    stat_min=5, 
                                    stat_max=18,
                                    cmap='turbo',
@@ -207,13 +210,10 @@ tsnr_plot=figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
 
 # --- Combine side by side ---
-
-figures.combine_plots(output_fname=f"{output_fig}/n{len(IDs)}_combined_plots.png",
+figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_plots.png"),
                       map_files=[tsnr_plot,glm_plot],
                       graph_files=[box_plot["tsnr"],box_plot["ssnr"],bar_plot,dist_plot],
                       figsize=(7.5, 4), redo=redo)
-
-
 
 ## Next steps:
 # plot the three at the right side of the previous figure
@@ -226,10 +226,10 @@ figures.combine_plots(output_fname=f"{output_fig}/n{len(IDs)}_combined_plots.png
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  start', flush=True)
 print("=========================================", flush=True)
-output_dir=second_level_dir.format("icc_shimSlice_run01_run02")
+output_dir = second_level_dir.format("icc_shimSlice_run01_run02")
 i_fnames_by_runs = []
-tag="task-motor_acq-shimSlice+3mm"
-IDs_2runs=[]
+tag = "task-motor_acq-shimSlice+3mm"
+IDs_2runs = []
 for ID in IDs:
     raw_func = sorted(glob.glob(os.path.join( config["raw_dir"], f"sub-{ID}", "func", f"sub-{ID}_{tag}_*bold.nii.gz")))
     
@@ -283,7 +283,7 @@ for ID in IDs_2runs:
     
     i_fnames_by_runs.append(i_fnames_runs)
 
-icc_maps,icc_maps_s=glm_ana.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir,  mask_file=mask, threshold=0)
+icc_maps,icc_maps_s = glm_ana.run_icc(IDs=IDs_2runs, i_fnames=i_fnames_by_runs, o_dir=output_dir, mask_file=mask, threshold=0)
 #postprocess.plot_ICC_maps(i_fname=icc_maps,
  #                         output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
   #                        cmap="turbo",

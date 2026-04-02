@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import pingouin as pg
+import warnings
 
 # nilearn
 from nilearn.plotting import plot_design_matrix
@@ -28,7 +29,7 @@ import matplotlib.gridspec as gridspec
 from utils import compute_tsnr_map, compute_SNR, extract_mean_within_mask
 #####################################################
 class GLM_main:
-    '''
+    """
     The GLM_main class is used to setup the GLM path and execute the GLM steps.
 
     Attributes
@@ -39,7 +40,7 @@ class GLM_main:
         List of participant IDs to process (e.g., ['A001', 'A002'])
     verbose : bool
         Whether to print information during the each step (default: True)
-    '''
+    """
 
     def __init__(self, config, IDs=None,verbose=True):
         if IDs==None:
@@ -48,7 +49,7 @@ class GLM_main:
         # Class attributes -------------------------------------------------------------------------------------
         self.config = config # load config info
         self.participant_IDs= IDs # list of the participants to analyze
-        self.raw_dir = os.path.join(self.config["raw_dir"])  # directory of the raw data
+        self.raw_dir = self.config["raw_dir"]  # directory of the raw data
         self.derivatives_dir = os.path.join(self.config["raw_dir"], self.config["derivatives_dir"])  # directory of the derivatives data
         self.first_level_dir = os.path.join(self.config["raw_dir"], self.config["first_level"]["dir"])  # directory of the derivatives data
         self.second_level_dir = os.path.join(self.config["raw_dir"], self.config["second_level"]["dir"])  # directory of the second-level analysis data
@@ -113,7 +114,7 @@ class GLM_main:
         else:
             run_tag="_" + run_name
         # --- Define directories and load files -----------------------------------------------------------
-        first_level_dir = self.first_level_dir.format("glm",ID) + task_name + "/"
+        first_level_dir = os.path.join(self.first_level_dir.format("glm",ID), task_name)
         os.makedirs(first_level_dir, exist_ok=True)
 
         df_events = pd.read_csv(events_file, sep="\t") # Load event file
@@ -121,7 +122,7 @@ class GLM_main:
         df_events["trial_type"] = df_events["trial_type"].replace({"start": "rest"}) # start is equivalent to rest
 
         # Load json file
-        json_file = os.path.join(self.raw_dir, f"sub-{ID}/func/sub-{ID}_{task_name}{run_tag}_bold.json")
+        json_file = os.path.join(self.raw_dir, f"sub-{ID}", "func", f"sub-{ID}_{task_name}{run_tag}_bold.json")
         with open(json_file, "r") as f:
             json_data = json.load(f)
         tr = json_data.get("RepetitionTime")
@@ -278,7 +279,7 @@ class GLM_main:
     
     def run_second_level_glm(self,i_fnames=None,design_matrix=None,mask_fname=None,smoothing_fwhm=None,parametric=False,n_perm=10000,vox_thr=0.01,task_name=None,n_jobs=2,run_name=None,verbose=True,redo=False):
 
-        '''
+        """
         Run second-level GLM for a specific task.
         # ongoing test nilearn: https://nilearn.github.io/stable/modules/generated/nilearn.glm.second_level.SecondLevelModel.html
 
@@ -311,7 +312,7 @@ class GLM_main:
         -------
         z_map_file : str
             Filename of the output t-map NIfTI file (e.g., "n20_motor_acq-shimBase+3mm_intercept_z_map.nii.gz")
-        '''
+        """
         
 
 
@@ -320,7 +321,7 @@ class GLM_main:
             raise ValueError("Please provide the list of filenames of the input contrast images.")
         
         # --- Define directories  -----------------------------------------------------------
-        second_level_dir = self.second_level_dir.format(task_name) + "/"
+        second_level_dir = self.second_level_dir.format(task_name)
         os.makedirs(second_level_dir, exist_ok=True)
 
         # Load design matrix file if provided, otherwise create a default design matrix with an intercept only
@@ -441,13 +442,13 @@ class TSNR_main:
         self.path_tsnr_inTemplate = os.path.join(self.second_level_dir.format("snr"))
 
     def generate_tsnr_maps_and_csv(self,space="native",fname_mask=None,native_gm_mask=None):
-        '''
+        """
         tSNR extraction can be either be done in native or PAM50 space:
         space: str
             choose the option "native" or "PAM50"
         fname_mask: str
             define the path of the mask otherwise the cord will be automatically selected either in native or PAM50 space
-        '''
+        """
         dfs={}
         dfs["tsnr"] = pd.DataFrame(columns=["IDs", "task", "acq", "tsnr"])
         dfs["ssnr"] = pd.DataFrame(columns=["IDs", "task", "acq", "ssnr"])
@@ -478,15 +479,15 @@ class TSNR_main:
                     if selected_file is None:
                         continue
 
-                    selected_mean_file=selected_file.split('.')[0] + "_mean.nii.gz"    
+                    selected_mean_file=selected_file.split('.')[0] + "_mean.nii.gz"
 
                     # Compute tSNR map in native space
                     path_tsnr_sub_folder = os.path.join(self.path_tsnr, f"sub-{ID}", tag)
                     fname_tsnr = compute_tsnr_map(selected_file, path_tsnr_sub_folder, self.redo, min_vols_for_tsnr)
-                    
+
                     #seg file in native space
                     fname_mask = os.path.join(self.config["raw_dir"],self.config["preprocess_dir"]["main_dir"].format(ID),"func",tag,f"sub-{ID}_{tag}_bold_moco_mean_seg.nii.gz")
-                    
+
                     # Warp tSNR in PAM50 space
                     fname_tsnr_in_template = fname_tsnr.replace("_bold_moco_tSNR.nii.gz",
                                                                 "_bold_moco_tsnr_in_PAM50.nii.gz")
@@ -506,7 +507,7 @@ class TSNR_main:
                         fname_template = os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"])
                         cmd_coreg = f"sct_apply_transfo -i {fname_tsnr} -d {fname_template} -w {fname_warp_from_func_to_template} -o {fname_tsnr_in_template} -x nn"
                         os.system(cmd_coreg)
-                    
+
                     if native_gm_mask:
                         mask_PAM50=os.path.join(self.config["code_dir"], "template",self.config["PAM50_gm"])
                         fname_gm_mask = fname_tsnr.split("tSNR")[0] + "gm.nii.gz"
@@ -517,19 +518,19 @@ class TSNR_main:
                             "func",
                             tag,
                             f"sub-{ID}_{tag}_from-PAM50_to_func_mode-image_xfm.nii.gz")
-                        
+
                         if not os.path.exists(fname_gm_mask) or self.redo:
                             cmd_coreg = f"sct_apply_transfo -i {mask_PAM50} -d {fname_tsnr} -w {fname_warp_from_template_to_func} -o {fname_gm_mask} -x nn"
                             cmd_bin=f"fslmaths {fname_gm_mask} -thr 0.1 -bin {fname_gm_mask}" # binarize the mask
                             os.system(cmd_coreg)
                             os.system(cmd_bin)
-                        
+
                         if not os.path.exists(fname_wm_mask) or self.redo:
                             cmd_bin=f"fslmaths {fname_mask} -sub {fname_gm_mask} -thr 0.1 -bin {fname_wm_mask}" # binarize the mask
                             os.system(cmd_bin)
 
                     # Extract metrics from native space
-                    self.fname_metrics={"ssnr": os.path.join(self.path_tsnr, "ssnr_metrics.csv"), 
+                    self.fname_metrics={"ssnr": os.path.join(self.path_tsnr, "ssnr_metrics.csv"),
                                              "tsnr": os.path.join(self.path_tsnr, "tsnr_metrics.csv"), }
                     if space=="native" and fname_tsnr is not None:
                         if native_gm_mask:
@@ -555,20 +556,20 @@ class TSNR_main:
 
                         tsnr_mean = extract_mean_within_mask(fname_tsnr_in_template, fname_mask)
 
-                    #extract ssnr
-                    ssnr=compute_SNR(selected_mean_file,fname_mask, self.redo)
+                    # Extract sSNR
+                    ssnr = compute_SNR(selected_mean_file, fname_mask, self.redo)
 
-                    for metric in ["tsnr","ssnr"]:
-                        values=tsnr_mean if metric=="tsnr" else ssnr
+                    for metric in ["tsnr", "ssnr"]:
+                        values = tsnr_mean if metric=="tsnr" else ssnr
                         if len(dfs[metric]) == 0:
                             dfs[metric] = pd.DataFrame([[ID, task, acq_name.split("+")[0], values]], columns=dfs[metric].columns)
-                        dfs[metric] = pd.concat(
-                            [pd.DataFrame([[ID, task, acq_name.split("+")[0], values]], columns=dfs[metric].columns), dfs[metric]],
-                            ignore_index=True)
+                        else:
+                            dfs[metric] = pd.concat(
+                                [pd.DataFrame([[ID, task, acq_name.split("+")[0], values]], columns=dfs[metric].columns), dfs[metric]], ignore_index=True)
 
         # Keep only 'rest' rows for IDs that have both 'motor' and 'rest'
         for metric in ["tsnr","ssnr"]:
-            if not os.path.exists(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv"):
+            if not os.path.exists(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv") or self.redo:
                 ids_with_both = dfs[metric].groupby('IDs')['task'].apply(
                     lambda x: set(['motor', 'rest']).issubset(set(x))
                 )
@@ -577,7 +578,7 @@ class TSNR_main:
                 df_reduced.to_csv(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv", index=False)
                 self.pair_ttest(csv_file=self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv",value_col=metric,redo=self.redo)
 
-            if not os.path.exists(self.fname_metrics[metric]):
+            if not os.path.exists(self.fname_metrics[metric]) or self.redo:
                 dfs[metric].to_csv(self.fname_metrics[metric], index=False)
                 self.pair_ttest(csv_file=self.fname_metrics[metric],value_col=metric,redo=self.redo)
 
@@ -648,7 +649,6 @@ class TSNR_main:
 
         if not os.path.exists(fname_tsnr_avg) or redo:
             for i,ID in enumerate(IDs):
-                tsnr_path=self.first_level_dir.format("tsnr",ID)
                 tsnr_basename=tsnr_fnames[i].split("moco")[0]
                 fname_tsnr_in_template=glob.glob(tsnr_basename + "moco_tsnr_in_PAM50.nii.gz")[0]
 
@@ -709,9 +709,9 @@ class TSNR_main:
                     selected_file = f
         return selected_file
     
-    def pair_ttest(self, df=None, csv_file=None, output_fname=None,index='IDs', value_col='tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase',task_filter=None, task_col='task', redo=False):
+    def pair_ttest(self, df=None, csv_file=None, output_fname=None, index='IDs', value_col='tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase', task_filter=None, task_col='task', redo=False):
 
-        if output_fname==None and csv_file:
+        if output_fname is None and csv_file:
             output_fname=csv_file.split('.csv')[0] + "_stats.csv"
 
         if not os.path.exists(output_fname) or redo:
@@ -1479,7 +1479,7 @@ def count_roi_in_template(path_output, ID, task, acq_name, fname_func, fname_war
                           fname_template, redo):
     fname_ones_in_func = os.path.join(path_output, f"sub-{ID}_task-{task}_acq-{acq_name}_ones.nii.gz")
     fname_ones_in_template = os.path.join(path_output, f"sub-{ID}_task-{task}_acq-{acq_name}_ones_in_PAM50.nii.gz")
-    
+
     if not os.path.exists(fname_ones_in_func) or redo:
         nii_tmp = nib.load(fname_func)
         data_ones = np.ones_like(nii_tmp.get_fdata())

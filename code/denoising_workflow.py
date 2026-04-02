@@ -18,14 +18,13 @@
 #------------------------------------------------------------------
 # Main imports ------------------------------------------------------------
 import json,sys, os, glob, re, argparse
-import nibabel as nb
 import pandas as pd
 from nilearn import image
 
 # Get the environment variable PATH_CODE
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-with open(path_code + '/config/config_spine_7t_fmri.json') as config_file: # the notebook should be in 'xx/notebook/' folder #config_proprio
+with open(os.path.join(path_code, "config", "config_spine_7t_fmri.json")) as config_file: # the notebook should be in 'xx/notebook/' folder #config_proprio
     config = json.load(config_file) # load config file should be open first and the path inside modified
 
 parser = argparse.ArgumentParser()
@@ -49,7 +48,7 @@ path_data = os.path.abspath(args.path_data)
 config["raw_dir"]=path_data
 config["code_dir"]=path_code
 
-participants_tsv = pd.read_csv(path_code + '/config/participants.tsv', sep='\t',dtype={'participant_id': str})
+participants_tsv = pd.read_csv(os.path.join(path_code, "config", "participants.tsv"), sep='\t',dtype={'participant_id': str})
 
 new_IDs=[]
 if IDs == [""]:
@@ -62,9 +61,8 @@ if tasks != [""]:
     config["design_exp"]["task_names"] = tasks
 
 #Import scripts
-sys.path.append(path_code + "/code/") # Change this line according to your directory
+sys.path.append(os.path.join(path_code, "code"))  # Change this line according to your directory
 from denoising import Denoising
-import utils as utils
 from preprocess import Preprocess_Sc, Preprocess_main
 
 denoising=Denoising(config,IDs=IDs)
@@ -92,8 +90,8 @@ for ID_nb,ID in enumerate(IDs):
 
     for task_name in config["design_exp"]["task_names"]:
         for acq_name in config["design_exp"]["acq_names"]:
-            tag="task-" + task_name + "_acq-" + acq_name
-            raw_func=glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz'))
+            tag = "task-" + task_name + "_acq-" + acq_name
+            raw_func = glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz'))
 
             for func_file in raw_func:
                 # Check run number if multiple run exists

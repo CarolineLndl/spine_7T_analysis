@@ -1,34 +1,16 @@
 import os
-import glob
-import json
 import numpy as np
 import pandas as pd
 import nibabel as nib
-
-#matplotlib
 import matplotlib.pyplot as plt
-import matplotlib
 import matplotlib.image as mpimg
-import matplotlib.gridspec as gridspec
-
-
-# nilearn
-from nilearn.plotting import plot_design_matrix
-from nilearn.image import resample_to_img
-from nilearn.image import smooth_img
 from nibabel.processing import resample_from_to
-
-#mpl_toolkits
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-
 import seaborn as sns
-
 
 
 #####################################################
 class Figures_main:
-    '''
+    """
     The Postprocess_main class is used to setup the Post-processing path and execute the Post-processing steps.
 
     Attributes
@@ -39,7 +21,7 @@ class Figures_main:
         List of participant IDs to process (e.g., ['A001', 'A002'])
     verbose : bool
         Whether to print information during the each step (default: True)
-    '''
+    """
 
     def __init__(self, config, IDs=None,verbose=True):
         if IDs==None:
@@ -48,7 +30,7 @@ class Figures_main:
         # Class attributes -------------------------------------------------------------------------------------
         self.config = config # load config info
         self.participant_IDs= IDs # list of the participants to analyze
-        self.raw_dir = os.path.join(self.config["raw_dir"])  # directory of the raw data
+        self.raw_dir = self.config["raw_dir"]  # directory of the raw data
         self.derivatives_dir = os.path.join(self.config["raw_dir"], self.config["derivatives_dir"])  # directory of the derivatives data
         self.first_level_dir = os.path.join(self.config["raw_dir"], self.config["first_level"]["dir"])  # directory of the derivatives data
         self.second_level_dir = os.path.join(self.config["raw_dir"], self.config["second_level"]["dir"])  # directory of the second-level analysis data
@@ -371,7 +353,7 @@ class Figures_main:
             cmap=cmap,
             label=cbar_label,
             left=0.05 if n_maps == 2 else 0.11 ,
-            bottom=0.05, width=0.04, height=0.15 
+            bottom=0.05, width=0.04, height=0.15
         )
 
         # -- Spinal levels
@@ -622,9 +604,9 @@ class Figures_main:
         return output_fname
 
     def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, redo=False):
-        '''
+        """
         Create matrix of correlation boxplots with matching box outline and whisker colors.
-        '''
+        """
 
         if not os.path.exists(output_fname) or redo:
             if csv_file:
@@ -889,5 +871,4 @@ class Figures_main:
                                 left=0.01, right=0.99, top=0.93, bottom=0.01)
             plt.savefig(output_fname, dpi=300, transparent=True, bbox_inches='tight')
             plt.close()
-            
-       
+

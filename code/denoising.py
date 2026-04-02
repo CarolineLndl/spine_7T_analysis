@@ -6,8 +6,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import utils as utils
-
-from joblib import Parallel, delayed
+import warnings
 
 # Plotting
 import matplotlib.gridspec as GridSpec
@@ -58,52 +57,52 @@ class Denoising:
 
             # create 1 folder per session if there are multiple sessions (exemple multiple days of acquisition)
             for ses_name in self.config["design_exp"]['ses_names']:
-                ses_dir="/" + ses_name if int(self.config["design_exp"]["ses_nb"])>0 else ""
+                ses_dir = ses_name if int(self.config["design_exp"]["ses_nb"])>0 else ""
                 if ses_dir != "":
-                    os.makedirs(ID_denoising_dir +  ses_dir,exist_ok=True)
+                    os.makedirs(os.path.join(ID_denoising_dir, ses_dir),exist_ok=True)
 
                 # spinal cord or brain subfolders will be created if two structures are specified in the config file
                 if len(self.config["structures"])>1:
                     for structure in self.config["structures"]:
-                        os.mkdir(ID_denoising_dir +  ses_dir + "/" + structure)
-                    ID_dir=ID_denoising_dir +  ses_dir + "/" + structure
+                        os.mkdir(os.path.join(ID_denoising_dir, ses_dir, structure))
+                    ID_dir = os.path.join(ID_denoising_dir, ses_dir, structure)
                 else:
-                    ID_dir=ID_denoising_dir +  ses_dir
+                    ID_dir = os.path.join(ID_denoising_dir, ses_dir)
 
             print("New folders in denoising dir have been created") if verbose==True else None
 
             # Create a folder for each runs in func folder
             if "design_exp" in self.config.keys():
                 for ses_name in self.config["design_exp"]['ses_names']:
-                    ses_dir=ses_name if int(self.config["design_exp"]["ses_nb"])>1 else ""
+                    ses_dir = ses_name if int(self.config["design_exp"]["ses_nb"])>1 else ""
                     # if "acq_names" exist in the config file
                     if "acq_names" in self.config["design_exp"].keys():
                         for task_name in self.config["design_exp"]['task_names']:
                             for acq_name in self.config["design_exp"]['acq_names']:
-                                tag="task-" + task_name + "_acq-" + acq_name
-                                os.makedirs(ID_dir+ "/" + tag ,exist_ok=True)
+                                tag = "task-" + task_name + "_acq-" + acq_name
+                                os.makedirs(os.path.join(ID_dir, tag), exist_ok=True)
 
                                 # Create denoising sub-directories paths
                                 for sub_dir in ["denoised_dir", "norm_dir", "smoothed_dir"]:
                                     if config["denoising"][sub_dir] != "":
-                                        new_path=os.path.expandvars(ID_dir + "/" +tag + "/" + config["denoising"][sub_dir])
-                                        os.makedirs(new_path,exist_ok=True)
-                                        if sub_dir=="denoised_dir":
-                                            os.makedirs(new_path + "/confounds/",exist_ok=True)
+                                        new_path = os.path.join(ID_dir, tag, config["denoising"][sub_dir])
+                                        os.makedirs(new_path, exist_ok=True)
+                                        if sub_dir == "denoised_dir":
+                                            os.makedirs(os.path.join(new_path, "confounds"), exist_ok=True)
 
                     else:
                         for task_name in self.config["design_exp"]['task_names']:
                             task_dir=task_name if int(self.config["design_exp"]["task_nb"])>1 else ""
-                            os.makedirs(ID_dir + task_dir,exist_ok=True)
+                            os.makedirs(os.path.join(ID_dir, task_dir), exist_ok=True)
                             # Create denoising sub-directories paths
                             for sub_dir in ["denoised_dir", "norm_dir", "smooth_dir"]:
                                 if config["denoising"][sub_dir] != "":
-                                    os.makedirs(os.path.expandvars(ID_dir + "/" +task_dir + "/" + config["denoising"][sub_dir]),exist_ok=True)
-                                    if sub_dir=="denoised_dir":
-                                        os.makedirs(new_path + "/confounds/",exist_ok=True)
+                                    os.makedirs(os.path.join(ID_dir, task_dir, config["denoising"][sub_dir]), exist_ok=True)
+                                    if sub_dir == "denoised_dir":
+                                        os.makedirs(os.path.join(new_path, "confounds"), exist_ok=True)
 
     def moco_params(self,ID=None, slice_wise=True,input_file=None, func_file=None, structure="",task_name='',run_name='', output_file=None,redo=False,verbose=True):
-        '''
+        """
             Create slicewise moco parameters
 
             Attributes
@@ -133,38 +132,37 @@ class Denoising:
 
             outputs
             ----------
-        '''
+        """
 
         if ID==None:
             raise(Exception('ID should be provided ex: ID="A001"'))
-        physio_dir=self.denoising_dir.format(ID) +'/'+ task_name  +'/'+ structure + '/' + self.config["denoising"]["denoised_dir"] +'/confounds/' # output directory
+        physio_dir = os.path.join(self.denoising_dir.format(ID), task_name, structure, self.config["denoising"]["denoised_dir"], "confounds")  # output directory
 
-        structure_tag="" if structure =="" else "_" + structure
-        task_tag="" if task_name=="" else "_" + task_name
-        run_tag="" if run_name=="" else "_" + run_name
+        structure_tag = "" if structure == "" else "_" + structure
+        task_tag = "" if task_name == "" else "_" + task_name
+        run_tag = "" if run_name == "" else "_" + run_name
 
         # Select the input file  (text file if brain or nifti file if spinal cord)
-        if input_file==None:
-            if structure=="brain":
-                input_file=glob.glob(self.preproc_dir.format(ID) + self.config["moco_files"]["dir"].format(ID,run_tag,structure_tag) + self.config["moco_files"]["moco_param"][structure])[0]
-
+        if input_file is None:
+            if structure == "brain":
+                input_file = glob.glob(os.path.join(self.preproc_dir.format(ID), self.config["moco_files"]["dir"].format(ID,run_tag,structure_tag), self.config["moco_files"]["moco_param"][structure]))[0]
             else:
-                input_file=sorted(glob.glob(self.preproc_dir.format(ID)  + self.config["preprocess_dir"]["func_moco"].format(task_name) + "/"+structure_tag+"/" + self.config["preprocess_f"]["moco_params"].format(task_tag,run_tag)))
+                input_file = sorted(glob.glob(os.path.join(self.preproc_dir.format(ID), self.config["preprocess_dir"]["func_moco"].format(task_name), structure_tag, self.config["preprocess_f"]["moco_params"].format(task_tag,run_tag))))
         if verbose:
             print("----------------------------------------------------------")
             print("Moco parameters estimation: " + ID + " : " + task_name + " " + run_name)
             print("----------------------------------------------------------")
 
         if slice_wise:
-            if structure=="brain":
-                if func_file==None:
-                    func_file=glob.glob(self.preproc_dir.format(ID) + self.config["moco_files"]["dir"].format(ID,run_tag,structure_tag) + self.config["moco_files"]["moco_mean_f"])[0]
+            if structure == "brain":
+                if func_file is None:
+                    func_file=glob.glob(os.path.join(self.preproc_dir.format(ID), self.config["moco_files"]["dir"].format(ID,run_tag,structure_tag), self.config["moco_files"]["moco_mean_f"]))[0]
 
-                func_img=nib.load(func_file) # load the func image
-                moco_brain=pd.read_csv(input_file, delim_whitespace=True, header=None) # load motion parameter file
+                func_img = nib.load(func_file)  # load the func image
+                moco_brain = pd.read_csv(input_file, delim_whitespace=True, header=None)  # load motion parameter file
                 for slice_nb in range(0,func_img.header.get_data_shape()[2]):
-                    slice_str="00" + str(slice_nb + 1) if (slice_nb+1)<10 else "0" + str(slice_nb+1)
-                    output_moco_file=physio_dir +  '/sub-' + ID +  '_6_'+'moco'+structure_tag+task_tag+run_tag+'_slice'+slice_str+'.txt'
+                    slice_str = "00" + str(slice_nb + 1) if (slice_nb+1)<10 else "0" + str(slice_nb+1)
+                    output_moco_file = os.path.join(physio_dir, f"sub-{ID}_6_moco{structure_tag}{task_tag}{run_tag}_slice{slice_str}.txt")
                     if not os.path.exists(output_moco_file):
                         np.savetxt(output_moco_file, moco_brain)
 
@@ -183,7 +181,7 @@ class Denoising:
                 #extract the mocovalue for each slice
                 for slice_nb in range(0,X_img.header.get_data_shape()[2]):
                     slice_str="00" + str(slice_nb + 1) if (slice_nb+1)<10 else "0" + str(slice_nb+1)
-                    output_moco_file=physio_dir +  '/sub-' + ID +  '_2_'+'moco'+structure_tag+task_tag+run_tag+'_slice'+slice_str+'.txt'
+                    output_moco_file = os.path.join(physio_dir, f"sub-{ID}_2_moco{structure_tag}{task_tag}{run_tag}_slice{slice_str}.txt")
                     if not os.path.exists(output_moco_file) or redo :
                         moco_value=[]
 
@@ -202,7 +200,7 @@ class Denoising:
         else:
             # moco param are going to by copy
 
-            input_file=glob.glob(self.preproc_dir.format(ID) + self.config["moco_files"]["dir"].format(ID,structure) + self.config["moco_files"]["moco_param"][structure])[0]
+            input_file=glob.glob(os.path.join(self.preproc_dir.format(ID), self.config["moco_files"]["dir"].format(ID,structure), self.config["moco_files"]["moco_param"][structure]))[0]
             output_moco_file = os.path.join(
                 physio_dir,
                 f"sub-{ID}_{'6' if structure == 'brain' else '2'}_moco_{structure}.txt")
@@ -214,7 +212,7 @@ class Denoising:
 
 
     def outliers(self,ID=None, i_img=None, structure='',mask_file=None,ses_name='',task_name='', run_name='', output_file=None,redo=False, verbose=True):
-        '''
+        """
             Outliers calculation with fsl
             https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLMotionOutliers
 
@@ -241,7 +239,7 @@ class Denoising:
 
             Outputs:
             --------
-        '''
+        """
 
         # --- Input validation -------------------------------------------------------------
         if ID is None:
@@ -250,13 +248,11 @@ class Denoising:
             raise(Exception('structure should be provided ex: ID="spinalcord"'))
 
         # --- Define directories -----------------------------------------------------------
-        preprocess_dir = self.derivatives_dir + self.config["preprocess_dir"]["main_dir"].format(ID)
-        structure_tag="" if structure =="" else "_" + structure
         task_tag="" if task_name=="" else "_" + task_name
         run_tag="" if run_name=="" else "_" + run_name
 
         if i_img is None:
-            i_img=glob.glob(self.preproc_dir.format(ID)+ '/' + self.config["preprocess_dir"]["func_moco"].format(task_name) + self.config["preprocess_f"]["func_moco"].format(ID,task_tag,run_tag))[0]
+            i_img = glob.glob(os.path.join(self.preproc_dir.format(ID), self.config["preprocess_dir"]["func_moco"].format(task_name), self.config["preprocess_f"]["func_moco"].format(ID,task_tag,run_tag)))[0]
 
         if mask_file is None:
             mask_file = os.path.join(self.preproc_dir.format(ID), 'func', task_name, f"sub-{ID}_{task_name}_bold_moco_mean_seg.nii.gz")
@@ -266,13 +262,13 @@ class Denoising:
 
         # --- Define output file --------------------------------------------------------
         if output_file==None:
-            output_file=self.denoising_dir.format(ID) + '/'+task_name+ '/'+ self.config["denoising"]["denoised_dir"].format(ID) +'/'+ structure +'/confounds/sub-' + ID + task_tag + run_tag + '_outliers'
+            output_file = os.path.join(self.denoising_dir.format(ID), task_name, self.config["denoising"]["denoised_dir"].format(ID), structure, "confounds", f"sub-{ID}{task_tag}{run_tag}_outliers")
         
         if not os.path.exists(os.path.dirname(output_file)):
             os.makedirs(os.path.dirname(output_file))
 
         # --- Run outliers calculation --------------------------------------------------------
-        cmd_fsl="fsl_motion_outliers -i "+i_img+" -o "+output_file+ ".txt —m "+mask_file+ " --nomoco --dvars -p "+output_file + ".png "
+        cmd_fsl = f"fsl_motion_outliers -i {i_img} -o {output_file}.txt —m {mask_file} --nomoco --dvars -p {output_file}.png"
 
         if not os.path.exists(output_file + ".txt") or redo:
             if verbose:
@@ -283,16 +279,16 @@ class Denoising:
             os.system(cmd_fsl)
 
             # fsl do not provide outputs if there are no outliers so we need to create a file with only 0 values
-            if not os.path.exists(output_file +".txt"):
+            if not os.path.exists(output_file + ".txt"):
                 func_img=nib.load(i_img)
                 vol_number=func_img.header.get_data_shape()[3]
                 array = np.zeros((vol_number, 1))
-                np.savetxt(output_file +".txt", array, fmt='%d', delimiter='   ')
+                np.savetxt(output_file + ".txt", array, fmt='%d', delimiter='   ')
 
         return output_file + ".txt"
 
     def find_physio_file(self,input_dir=None, ID=None, ses_name='', task_name='', run_name='',copy=True,output_dir=None,redo=False, verbose=True):
-        '''
+        """
             Find physio file in the BIDS structure, could be .tsv, .log or .mat format
             Attributes
             ----------
@@ -317,12 +313,12 @@ class Denoising:
 
             Outputs:
             --------
-        '''
+        """
         # --- Input validation -------------------------------------------------------------
-        if ID==None:
+        if ID is None:
             raise(Exception('ID should be provided ex: ID="A001"'))
-        if input_dir==None:
-            input_dir= self.raw_dir + "/sub-" + ID + "/func/"
+        if input_dir is None:
+            input_dir = os.path.join(self.raw_dir, f"sub-{ID}", "func")
 
         if verbose:
             print("Looking for physio file in : " + input_dir)
@@ -331,29 +327,29 @@ class Denoising:
         task_tag="" if task_name=="" else "_" + task_name
         run_tag="" if run_name=="" else "_" + run_name
         outputs=[];outputs_resp=[];outputs_puls=[];outputs_trig=[];outputs_tics=[]
-        physio_file_tsv=glob.glob(input_dir + '/*'+ task_tag + '*'+ run_tag +'*.tsv*')
-        physio_file_log=glob.glob(input_dir + '/*'+ task_tag + '*'+ task_tag +'*.log')
-        physio_file_mat=glob.glob(input_dir + '/**/*'+ task_tag + '*'+ task_tag + 'RS.mat')
+        physio_file_tsv = glob.glob(os.path.join(input_dir, f"*{task_tag}*{run_tag}*.tsv*"))
+        physio_file_log = glob.glob(os.path.join(input_dir, f"*{task_tag}*{run_tag}*.log"))
+        physio_file_mat = glob.glob(os.path.join(input_dir, "**", f"*{task_tag}*{task_tag}RS.mat"))
 
         # --- Find and copy physio files --------------------------------------------------------
         # Case 1: only one .tsv file exists
         if len(physio_file_tsv) ==1:
-            if copy==True: # copy the file in an other folder if copy==True
+            if copy: # copy the file in an other folder if copy==True
                 if output_dir is None:
                     raise(Exception('output_dir should be list of directories'))
-                if not os.path.exists(output_dir+os.path.basename(physio_file_tsv[0])) or redo:
-                    output=shutil.copyfile(physio_file_tsv[0], output_dir+ '/'+os.path.basename(physio_file_tsv[0])) # copy the file in an other folder
+                if not os.path.exists(os.apth.join(output_dir, os.path.basename(physio_file_tsv[0]))) or redo:
+                    output = shutil.copyfile(physio_file_tsv[0], os.path.join(output_dir, os.path.basename(physio_file_tsv[0]))) # copy the file in an other folder
                     print('Physio file has been copy here : ' + output)
                 else:
-                    output=output_dir+os.path.basename(physio_file_tsv[0])
+                    output = os.path.join(output_dir, os.path.basename(physio_file_tsv[0]))
 
                 if output.split('.')[-1] == "gz": # unzip the file if it was in .gz format
-                    output=utils.unzip_file(i_file=output,ext='.tsv',zip_file=False,redo=redo)
+                    output = utils.unzip_file(i_file=output, ext='.tsv', zip_file=False, redo=redo)
 
             else:
                 output=physio_file_tsv
                 if output.split('.')[-1] == "gz": # unzip the file if it was in .gz format
-                    output=utils.unzip_file(i_file=output,ext='.tsv',zip_file=False,redo=redo)
+                    output=utils.unzip_file(i_file=output, ext='.tsv', zip_file=False, redo=redo)
                 outputs.append(output)
 
         # Case 2: two .tsv files exists (respiratory and cardiac)
@@ -361,64 +357,65 @@ class Denoising:
             if copy==True: # copy the file in an other folder if copy==True
                 if output_dir is None:
                     raise(Exception('output_dir should be list of directories'))
-                print(input_dir + '/*'+ run_tag +'*respiratory*.tsv*')
-                input_resp=glob.glob(input_dir + '/*'+ run_tag +'*respiratory*.tsv*')[0]
-                input_puls=glob.glob(input_dir + '/*'+ run_tag +'*cardiac*.tsv*')[0]
-                input_resp_json=glob.glob(input_dir + '/*'+ run_tag +'*respiratory*.json')[0]
-                input_puls_json=glob.glob(input_dir + '/*'+ run_tag +'*cardiac*.json')[0]
+                print(os.path.join(input_dir, f"*{run_tag}*respiratory*.tsv*"))
+                input_resp = glob.glob(os.path.join(input_dir, f"*{run_tag}*respiratory*.tsv*"))[0]
+                input_puls = glob.glob(os.path.join(input_dir, f"*{run_tag}*cardiac*.tsv*"))[0]
+                input_resp_json = glob.glob(os.path.join(input_dir, f"*{run_tag}*respiratory*.json"))[0]
+                input_puls_json = glob.glob(os.path.join(input_dir, f"*{run_tag}*cardiac*.json"))[0]
 
-                if not os.path.exists(output_dir+ '/'+os.path.basename(input_resp)) or redo:
-                    output_resp=shutil.copyfile(input_resp, output_dir+ '/'+os.path.basename(input_resp))
-                    shutil.copyfile(input_resp_json, output_dir+ '/'+os.path.basename(input_resp_json))
-                    output_puls=shutil.copyfile(input_puls, output_dir+ '/'+os.path.basename(input_puls))
-                    shutil.copyfile(input_puls_json, output_dir+ '/'+os.path.basename(input_puls_json))
+                if not os.path.exists(os.path.join(output_dir, os.path.basename(input_resp))) or redo:
+                    output_resp = shutil.copyfile(input_resp, os.path.join(output_dir, os.path.basename(input_resp)))
+                    shutil.copyfile(input_resp_json, os.path.join(output_dir, os.path.basename(input_resp_json)))
+                    output_puls = shutil.copyfile(input_puls, os.path.join(output_dir, os.path.basename(input_puls)))
+                    shutil.copyfile(input_puls_json, os.path.join(output_dir, os.path.basename(input_puls_json)))
                     print('Physio file has been copy here : ' + output_resp)
 
                 else:
-                    output_resp=output_dir+os.path.basename(input_resp)
-                    output_puls=output_dir+os.path.basename(input_puls)
+                    output_resp = os.path.join(output_dir, os.path.basename(input_resp))
+                    output_puls = os.path.join(output_dir, os.path.basename(input_puls))
 
                 if output_resp.split('.')[-1] == "gz": # unzip the file if it was in .gz format
-                    output_resp=utils.unzip_file(i_file=output_resp,ext='.tsv',zip_file=False,redo=redo)
-                    output_puls=utils.unzip_file(i_file=output_puls,ext='.tsv',zip_file=False,redo=redo)
+                    output_resp = utils.unzip_file(i_file=output_resp,ext='.tsv',zip_file=False,redo=redo)
+                    output_puls = utils.unzip_file(i_file=output_puls,ext='.tsv',zip_file=False,redo=redo)
 
         # Case 3: multiple .log files exists
         elif len(physio_file_log) >0:
             # multiple log files exists (e.g *_RESP.log; *_PULS.log; *_Trigger.log)
-            input_resp=glob.glob(input_dir + '*'+ run_tag +'*RESP.log')[0]
-            input_puls=glob.glob(input_dir + '*'+ run_tag +'*PULS.log')[0]
-            input_tics=glob.glob(input_dir + '*'+ run_tag +'*AcquisitionInfo.log')[0]
+            input_resp = glob.glob(os.path.join(input_dir, f"*{run_tag}*RESP.log"))[0]
+            input_puls = glob.glob(os.path.join(input_dir, f"*{run_tag}*PULS.log"))[0]
+            input_tics = glob.glob(os.path.join(input_dir, f"*{run_tag}*AcquisitionInfo.log"))[0]
 
-            if copy==True: # copy the file in an other folder if copy==True
+            if copy: # copy the file in another folder if copy==True
                 if output_dir is None:
                         raise(Exception('output_dir should be list of directories'))
 
-                if not os.path.exists(output_dir+os.path.basename(input_resp)) or redo:
-                    output_resp=shutil.copyfile(input_resp, output_dir+ '/'+ os.path.basename(input_resp)) # copy the file in an other folder
-                    output_puls=shutil.copyfile(input_puls, output_dir+ '/'+os.path.basename(input_puls))
-                    #output_trig=shutil.copyfile(input_trig, output_dir+ '/'+os.path.basename(input_trig))
-                    output_tics=shutil.copyfile(input_tics, output_dir+ '/'+os.path.basename(input_tics))
+                if not os.path.exists(os.path.join(output_dir, os.path.basename(input_resp))) or redo:
+                    output_resp = shutil.copyfile(input_resp, os.path.join(output_dir, os.path.basename(input_resp)))  # copy the file in an other folder
+                    output_puls = shutil.copyfile(input_puls, os.path.join(output_dir, os.path.basename(input_puls)))
+                    # output_trig = shutil.copyfile(input_trig, os.path.join(output_dir, os.path.basename(input_trig)))
+                    output_tics = shutil.copyfile(input_tics, os.path.join(output_dir, os.path.basename(input_tics)))
                 else:
-                    output_resp=output_dir+os.path.basename(input_resp) # copy the file in an other folder
-                    output_puls=output_dir+os.path.basename(input_puls)
-                    #output_trig=output_dir+os.path.basename(input_trig)
-                    output_tics=output_dir+os.path.basename(input_tics)
+                    # copy the file in another folder
+                    output_resp = os.path.join(output_dir, os.path.basename(input_resp))
+                    output_puls = os.path.join(output_dir, os.path.basename(input_puls))
+                    # output_trig = os.path.join(output_dir, os.path.basename(input_trig))
+                    output_tics = os.path.join(output_dir, os.path.basename(input_tics))
 
             else:
-                output_resp=input_resp;output_puls=input_puls;output_tics=input_tics
+                output_resp = input_resp;output_puls = input_puls;output_tics = input_tics
                 #output_trig=input_trig;
             output_resp.append(output_resp); output_puls.append(output_puls); output_tics.append(output_tics) #outputs_trig.append(output_trig) ;
 
         # Case 4: .mat file exists
         elif len(physio_file_mat) >0:
-            if copy==True:# copy the file in an other folder if copy==True
+            if copy:# copy the file in an other folder if copy==True
                 if output_dir is None:
                     raise(Exception('output_dir should be list of directories'))
                 if not os.path.exists(physio_file_mat[0]) or redo:
-                    output=shutil.copyfile(physio_file_mat[0], output_dir+ '/'+os.path.basename(physio_file_mat[0])) # copy the file in an other folder
+                    output = shutil.copyfile(physio_file_mat[0], os.path.join(output_dir, os.path.basename(physio_file_mat[0]))) # copy the file in an other folder
                     print('Physio file has been copy here : ' + output)
                 else:
-                    output=output_dir+os.path.basename(physio_file_mat[0])
+                    output = os.path.join(output_dir, os.path.basename(physio_file_mat[0]))
 
         #  Case 5: no physio file found
         else:
@@ -427,7 +424,7 @@ class Denoising:
         return output if len(physio_file_tsv) == 1 or len(physio_file_mat) > 0 else (output_resp, output_puls) if len(physio_file_tsv) == 2 else (output_resp, output_puls, output_tics) if len(physio_file_log) > 0 else None
 
     def plot_physio(self,ID=None,TR=None,frq=None,denoising_mat=None,task_name="",run_name="",output_dir=None,redo=False,verbose=False):
-        '''
+        """
             Plot physiological recordings
 
             Attributes
@@ -455,27 +452,27 @@ class Denoising:
            ----------
                 output_file : str
                     filename of the physio plot
-        '''
-        task_tag="" if task_name=="" else "_" + task_name
-        run_tag="" if run_name=="" else "_" + run_name
+        """
+        task_tag = "" if task_name=="" else "_" + task_name
+        run_tag = "" if run_name=="" else "_" + run_name
 
-        if ID==None:
+        if ID is None:
             raise(Exception('ID should be provided ex: ID="A001"'))
 
-        if TR==None:
-            TR=self.config["acq_params"]["TR"]
-        if frq==None:
-            frq=self.config["acq_params"]["physio_frq"]
+        if TR is None:
+            TR = self.config["acq_params"]["TR"]
+        if frq is None:
+            frq = self.config["acq_params"]["physio_frq"]
 
-        if denoising_mat==None:
-            raise(Exception('denoising_mat should be provided ex: denoising_mat="path/to/denoising/mat/file.mat"'))
+        if denoising_mat is None:
+            raise Exception('denoising_mat should be provided ex: denoising_mat="path/to/denoising/mat/file.mat"')
 
-        if output_dir==None:
-            output_dir=self.base_dir + self.config["denoising"]["denoised_dir"].format(ID,task_name) + '/physio_plots/'
+        if output_dir is None:
+            output_dir = os.path.join(self.base_dir, self.config["denoising"]["denoised_dir"].format(ID,task_name), 'physio_plots')
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
 
-        output_file=output_dir   + '/sub-' + ID + task_tag + run_tag + '_physio.png'
+        output_file = os.path.join(output_dir, f"sub-{ID}{task_tag}{run_tag}_physio.png")
 
         # 1. Load .mat file______________________________________________________
         mat_file={}
@@ -493,10 +490,10 @@ class Denoising:
                             'rvt':mat_file_load[13]} # respiratory volume per time (per secondes)
 
         # 2. Convert .mat in .txt files_______________________________________
-        np.savetxt(output_dir +  '/sub-' + ID +  task_tag + run_tag + '_raw_resp.txt', mat_file['r'])
-        np.savetxt(output_dir +  '/sub-' + ID + task_tag + run_tag +  '_raw_card.txt', mat_file['c'])
-        np.savetxt(output_dir +  '/sub-' + ID + task_tag + run_tag + '_hr.txt', mat_file['hr'])
-        np.savetxt(output_dir +  '/sub-' + ID + task_tag + run_tag +  '_rvt.txt', mat_file['rvt'])
+        np.savetxt(os.path.join(output_dir, f"sub-{ID}{task_tag}{run_tag}_raw_resp.txt"), mat_file['r'])
+        np.savetxt(os.path.join(output_dir, f"sub-{ID}{task_tag}{run_tag}_raw_card.txt"), mat_file['c'])
+        np.savetxt(os.path.join(output_dir, f"sub-{ID}{task_tag}{run_tag}_hr.txt"), mat_file['hr'])
+        np.savetxt(os.path.join(output_dir, f"sub-{ID}{task_tag}{run_tag}_rvt.txt"), mat_file['rvt'])
 
         # 3 Plots physio and save figures_________________________________________
 
@@ -538,7 +535,7 @@ class Denoising:
         return output_file
 
     def confounds_ts(self,ID=None,func_file=None,slice_wise=True,mask_seg_file=None,mask_csf_file=None,compcor=False, DCT=False, output_file=None, task_name="",run_name="", structure="", n_compcor=5, n_DCT=3, redo=False, verbose=True):
-        '''
+        """
             Compute slice-wise or volume-wise physiological confound time series (aCompCor and/or DCT) for fMRI denoising.
 
             This function generates nuisance regressors from functional data using:
@@ -602,27 +599,27 @@ class Denoising:
             - When `slice_wise=True`, one file per slice is generated (slice001, slice002, ...).
             - Missing masks in extremal slices produce NaN (DCT) or zero-filled (aCompCor) outputs.
             - The function automatically ensures consistent slice counts across input images.
-        '''
+        """
 
         # --- Input validation -------------------------------------------------------------
-        physio_dir=self.denoising_dir.format(ID) + '/'+task_name+ '/'+ self.config["denoising"]["denoised_dir"].format(ID) +'/'+ structure +'/confounds/' # output directory
+        physio_dir = os.path.join(self.denoising_dir.format(ID), task_name, self.config["denoising"]["denoised_dir"].format(ID), structure, 'confounds')  # output directory
 
-        if ID==None:
-            raise(Exception('ID shoul be provided ex: ID="A001"'))
-        if func_file==None:
-            raise(Exception('func_file should be provided ex: func_file="path/to/func/file.nii.gz"'))
-        if mask_seg_file==None and DCT:
-             raise(Exception('mask_seg_file should be provided ex: mask_seg_file="path/to/seg/file.nii.gz"'))
-        if mask_csf_file==None and compcor:
-             raise(Exception('mask_csf_file should be provided ex: mask_csf_file="path/to/csf/file.nii.gz"'))
+        if ID is None:
+            raise Exception('ID shoul be provided ex: ID="A001"')
+        if func_file is None:
+            raise Exception('func_file should be provided ex: func_file="path/to/func/file.nii.gz"')
+        if mask_seg_file is None and DCT:
+             raise Exception('mask_seg_file should be provided ex: mask_seg_file="path/to/seg/file.nii.gz"')
+        if mask_csf_file is None and compcor:
+             raise Exception('mask_csf_file should be provided ex: mask_csf_file="path/to/csf/file.nii.gz"')
 
         # ---  Load files -----------------------------------------------------------
         print("comcord")
         print(func_file)
         print(mask_seg_file)
-        func_img=nib.load(func_file) # load the functional image
-        mask_seg_img=nib.load(mask_seg_file) # load the seg mask image
-        mask_csf_img=nib.load(mask_csf_file) # load the csf mask image
+        func_img = nib.load(func_file) # load the functional image
+        mask_seg_img = nib.load(mask_seg_file) # load the seg mask image
+        mask_csf_img = nib.load(mask_csf_file) # load the csf mask image
         TR = func_img.header.get_zooms()[3]
 
         # Determine number of valid slices
@@ -633,30 +630,30 @@ class Denoising:
         # --- Define variables -----------------------------------------------------------
 
         # Define output filenames
-        structure_tag="" if structure =="" else "_" + structure
-        task_tag="" if task_name=="" else "_" + task_name
-        run_tag="" if run_name=="" else "_" + run_name
+        structure_tag = "" if structure =="" else "_" + structure
+        task_tag = "" if task_name=="" else "_" + task_name
+        run_tag = "" if run_name=="" else "_" + run_name
 
         # Define output filenames
         if slice_wise:
-            output_DCT_file=physio_dir +  '/sub-' + ID +  '_'+str(n_DCT)+'_DCT'+structure_tag+task_tag+run_tag+ '_slice001.txt'
-            output_compcor_file=physio_dir +  '/sub-' + ID +  '_'+str(n_compcor)+'_acompcor'+structure_tag+task_tag+run_tag+'_slice001.txt'
+            output_DCT_file = os.path.join(physio_dir, f"sub-{ID}_{n_DCT})_DCT{structure_tag}{task_tag}{run_tag}_slice001.txt")
+            output_compcor_file = os.path.join(physio_dir, f"sub-{ID}_{n_compcor}_acompcor{structure_tag}{task_tag}{run_tag}_slice001.txt")
         else:
-            output_DCT_file=physio_dir +  '/sub-' + ID +  '_'+str(n_DCT)+'_DCT'+structure_tag+task_tag+run_tag+'.txt'
-            output_compcor_file=physio_dir +  '/sub-' + ID +  '_'+str(n_compcor)+'_acompcor'+structure_tag+task_tag+run_tag+'.txt'
+            output_DCT_file = os.path.join(physio_dir, f"sub-{ID}_{n_DCT})_DCT{structure_tag}{task_tag}{run_tag}.txt")
+            output_compcor_file = os.path.join(physio_dir, f"sub-{ID}_{n_compcor}_acompcor{structure_tag}{task_tag}{run_tag}.txt")
 
         # --- Run confound extraction --------------------------------------------------------
-        if os.path.exists(output_DCT_file) and redo:
-                        if verbose:
-                            print("----------------------------------------------------------")
-                            print("Compute DCT: " + ID + " : " + task_name + " " + run_name)
-                            print("----------------------------------------------------------")
+        if DCT and (not os.path.exists(output_DCT_file) or redo):
+            if verbose:
+                print("----------------------------------------------------------")
+                print("Compute DCT: " + ID + " : " + task_name + " " + run_name)
+                print("----------------------------------------------------------")
 
-        if not os.path.exists(output_compcor_file) or redo:
-                        if verbose:
-                            print("----------------------------------------------------------")
-                            print("Compute Compcor: " + ID + " : " + task_name + " " + run_name)
-                            print("----------------------------------------------------------")
+        if compcor and (not os.path.exists(output_compcor_file) or redo):
+            if verbose:
+                print("----------------------------------------------------------")
+                print("Compute Compcor: " + ID + " : " + task_name + " " + run_name)
+                print("----------------------------------------------------------")
 
         if redo or (
             (DCT and not os.path.exists(output_DCT_file)) or
@@ -673,8 +670,7 @@ class Denoising:
 
                     # Run DCT
                     if DCT:
-                        output_DCT_file=physio_dir +  '/sub-' + ID +  '_'+str(n_DCT)+'_DCT'+structure_tag+task_tag+run_tag+'_slice'+slice_str+'.txt'
-
+                        output_DCT_file = os.path.join(physio_dir, f"sub-{ID}_{n_DCT})_DCT{structure_tag}{task_tag}{run_tag}_slice{slice_str}.txt")
 
                         if not os.path.exists(output_DCT_file) or redo:
                             DCT_comp=compute_noise_components(imgseries=func_slice.get_fdata(dtype=np.float32),
@@ -694,10 +690,8 @@ class Denoising:
 
                     # Run compcor
                     if compcor:
-                        output_compcor_file=physio_dir +  '/sub-' + ID +  '_'+str(n_compcor)+'_acompcor'+structure_tag+task_tag+run_tag+'_slice'+slice_str+'.txt'
+                        output_compcor_file = os.path.join(physio_dir, f"sub-{ID}_{n_compcor}_acompcor{structure_tag}{task_tag}{run_tag}_slice{slice_str}.txt")
                         if not os.path.exists(output_compcor_file) or redo:
-                            compcor_comp_final=[]
-
                             compcor_comp=compute_noise_components(imgseries=func_slice.get_fdata(dtype=np.float32),
                                                             mask_images=[mask_csf_slice], filter_type='polynomial', degree=2,
                                                             repetition_time=TR,
@@ -741,7 +735,7 @@ class Denoising:
         return output_compcor_file, output_DCT_file
 
     def combine_confounds(self,ID=None,confounds_infos=None,func_file=None,structure="",retroicor_confounds=False,compcor_confounds=False,moco_confounds=False,outliers_confounds=False,DCT_confounds=False,slice_wise=True,task_name="",run_name="",redo=False, verbose=True):
-        '''
+        """
             Combine confounds into a single file.
 
             Attributes
@@ -791,35 +785,35 @@ class Denoising:
             - Automatically handles missing confound files (fills NaNs).
             - Handles slice-wise or volume-wise processing.
             - Motion files may need harmonization (FSL vs SCT delimiters).
-        '''
+        """
         # --- Input validation -------------------------------------------------------------
-        if ID==None:
-            raise(Exception('ID shoul be provided ex: ID="A001"'))
+        if ID is None:
+            raise Exception('ID shoul be provided ex: ID="A001"')
 
-        if confounds_infos==None:
-            raise(Exception("Provide confound info: ex: {'Outliers':0,'Motion':6,'Retroicor':18,'CompCor':12,'DCT':3}"))
+        if confounds_infos is None:
+            raise Exception("Provide confound info: ex: {'Outliers':0,'Motion':6,'Retroicor':18,'CompCor':12,'DCT':3}")
 
         # --- Prepare tags and directories ---------------------------------------------------
-        structure_tag="" if structure =="" else "_" + structure
-        task_tag="" if task_name=="" else "_" + task_name
-        run_tag="" if run_name=="" else "_" + run_name
+        structure_tag = "" if structure =="" else "_" + structure
+        task_tag = "" if task_name=="" else "_" + task_name
+        run_tag = "" if run_name=="" else "_" + run_name
 
-        physio_dir=self.denoising_dir.format(ID) + '/'+task_name+ '/'+ self.config["denoising"]["denoised_dir"].format(ID) +'/'+ structure +'/confounds/' # output directory
+        physio_dir = os.path.join(self.denoising_dir.format(ID), task_name, self.config["denoising"]["denoised_dir"].format(ID), structure, 'confounds')  # output directory
 
         print("combine confounds")
         print(func_file)
         
-        if func_file==None:
-            func_file=glob.glob(self.preproc_dir.format(ID)+ '/' + self.config["preprocess_dir"]["func_moco"].format(task_name) + self.config["preprocess_f"]["func_moco"].format(ID,task_tag,run_tag))[0]
+        if func_file is None:
+            func_file = glob.glob(os.path.join(self.preproc_dir.format(ID), self.config["preprocess_dir"]["func_moco"].format(task_name), self.config["preprocess_f"]["func_moco"].format(ID,task_tag,run_tag)))[0]
 
         if outliers_confounds:
-            outliers_file=glob.glob(physio_dir + f"*{task_tag}{run_tag}*outliers.txt")[0]
+            outliers_file = glob.glob(os.path.join(physio_dir, f"*{task_tag}{run_tag}*outliers.txt"))[0]
 
         #    outliers_read=pd.read_csv(outliers_confounds,sep='  ',index_col=False,header=None,engine='python')
         #    outliers_id=pd.DataFrame.to_numpy(outliers_read)
 
         # Calculate number of slices
-        func_img=nib.load(func_file) # load the func image
+        func_img = nib.load(func_file) # load the func image
         n_vol = func_img.shape[3]
         slice_number=func_img.header.get_data_shape()[2] if slice_wise==True else 1
         slice_range = range(slice_number) if slice_wise else [None]
@@ -854,36 +848,31 @@ class Denoising:
             Confounds = {'All': np.empty((0, n_vol))}
             if not os.path.exists(output_file) or redo:
 
-
                 for confound_name, n_comp in confounds_infos.items():
                     if n_comp <= 0:
                         raise Exception(f"Confound '{confound_name}' must have n_comp > 0")
 
-                    confound_path = None
                     # OUTLIERS
                     if confound_name == "outliers":
                         if outliers_id is not None:
                             data = outliers_id
                         else:
                             data = np.full((n_vol, n_comp), np.nan)
-
-
                     else:
-                        confound_path = glob.glob(os.path.join(physio_dir, f"*{confound_name}*{task_tag}{run_tag}*{slice_str}.txt"))
+                        confound_path = os.path.join(physio_dir, f"*{confound_name}*{task_tag}{run_tag}*{slice_str}.txt")
 
                         # Other confound files
-                        pattern = glob.glob(physio_dir + f"*{confound_name}*{task_tag}{run_tag}*{slice_str}.txt")
+                        pattern = glob.glob(confound_path)
                         if pattern:
                             df = pd.read_csv(pattern[0], sep=r"\s+", header=None)
                             data = df.to_numpy()
-                            data = data[:, :n_comp]   # truncate if extra cols
+                            data = data[:, :n_comp]  # truncate if extra cols
                         else:
                             # missing file → fill with NaN
                             data = np.full((n_vol, n_comp), np.nan)
 
                     Confounds[confound_name] = data
                     Confounds['All'] = np.concatenate((Confounds['All'], data.T))
-
 
                 # Save combined confounds
                 df_all = pd.DataFrame(Confounds['All'].T)
@@ -899,7 +888,7 @@ class Denoising:
         return output_file
 
     def plot_confound_design(self,ID=None,confound_file=None,confounds_infos=None,structure="",task_name="",run_name='',redo=False, verbose=True):
-        '''
+        """
             Plot confound design matrix
 
             Attributes
@@ -921,28 +910,28 @@ class Denoising:
                 whether to redo the calculation if the output file already exists (optional , default=False)
             verbose : bool
                 whether to print progress messages and plots (optional , default=True)
-        '''
+        """
         if ID==None:
             raise(Exception('ID should be provided ex: ID="A001"'))
 
         if structure==None:
             raise(Exception('Structure should be provided ex: structure="spinalcord"'))
 
-        structure_tag="" if structure =="" else  " " + structure
-        task_tag="" if task_name=="" else " " + task_name
-        run_tag="" if run_name=="" else " " + run_name
+        structure_tag = "" if structure =="" else  " " + structure
+        task_tag = "" if task_name=="" else " " + task_name
+        run_tag = "" if run_name=="" else " " + run_name
 
         Confounds=pd.read_csv(confound_file,delimiter=' ',index_col=False,header=None)
         total_confounds=0
 
         for confound_name in confounds_infos:
-            total_confounds=total_confounds+confounds_infos[confound_name]
+            total_confounds = total_confounds + confounds_infos[confound_name]
 
         for confound_name in confounds_infos:
             if confound_name == "outliers":
-                confounds_infos["outliers"]=Confounds.shape[1]+1-total_confounds
+                confounds_infos["outliers"] = Confounds.shape[1]+1-total_confounds
             elif confound_name =="outliers_brsc":
-                confounds_infos["outliers_brsc"]=Confounds.shape[1]+1-total_confounds
+                confounds_infos["outliers_brsc"] = Confounds.shape[1]+1-total_confounds
 
         labels=['']
         for confound_name in confounds_infos:
@@ -950,7 +939,7 @@ class Denoising:
 
 
         fig, ax = plt.subplots(figsize=(10, 8))
-        ax=sns.heatmap(Confounds[:],vmin=-1, vmax=1,xticklabels=labels[1:])# change subject name to check an other subject
+        ax=sns.heatmap(Confounds[:],vmin=-1, vmax=1,xticklabels=labels[1:])  # change subject name to check another subject
         ax.set_title('Confound Matrix' +structure_tag +task_tag +run_tag +' participant: '  + ID,fontsize = 15)
         ax.set_ylabel('Volumes',fontsize = 12)
         ax.set_xlabel('Confounds',fontsize = 12)
@@ -965,8 +954,8 @@ class Denoising:
                 plt.savefig(confound_file.split('.')[0]+'.png')
             plt.close(fig)
 
-    def clean_images(self,ID=None,slice_wise=True,func_file=None,structure="",output_file=None,confounds_file=None,mask_file=None,task_name='',run_name='',standardize="zscore",detrend=False,high_pass=0.01,low_pass=0.17,tag_name="",n_jobs=1,redo=False,verbose=True):
-        '''
+    def clean_images(self, ID=None, slice_wise=True, func_file=None, structure="", output_file=None, confounds_file=None, mask_file=None, task_name='', run_name='', standardize="zscore", detrend=False, high_pass=0.01, low_pass=0.17, tag_name="", n_jobs=1, redo=False, verbose=True):
+        """
             Denoise fMRI data using specified confounds.
 
             Attributes
@@ -979,62 +968,59 @@ class Denoising:
                 4D preprocessed functional file. If None, it is automatically retrieved from preprocessing folders.
             structure : str
                 could be 'brain' or 'spinalcord' name of the structure to work on
-        '''
+        """
         ########### Check initiation:
-        if ID==None:
+        if ID is None:
             raise(Exception('ID should be provided ex: ID="A001"'))
 
-        if structure==None or confounds_file == None :
-            raise(Exception("'structure', 'confounds_files' and 'confound_infos' are required "))
+        if structure is None or confounds_file is None :
+            raise Exception("'structure', 'confounds_files' and 'confound_infos' are required ")
 
         ###########  Load the func file and mask to extract the number of slices and the TR:
-        
-        
-        if func_file==None:
-            func_file=glob.glob(self.preproc_dir.format(ID) + self.config["moco_files"]["dir"].format(ID,run_name,structure) + self.config["moco_files"]["moco_mean_f"])[0]
-        func_img=nib.load(func_file) # load the func image
-        slice_number=func_img.header.get_data_shape()[2] if slice_wise==True else 1 # extract the number of slices
-        TR=func_img.header.get_zooms()[3] # extract TR value
 
+        if func_file is None:
+            func_file=glob.glob(os.path.join(self.preproc_dir.format(ID), self.config["moco_files"]["dir"].format(ID,run_name,structure), self.config["moco_files"]["moco_mean_f"]))[0]
+        func_img = nib.load(func_file) # load the func image
+        slice_number = func_img.header.get_data_shape()[2] if slice_wise else 1 # extract the number of slices
+        TR = func_img.header.get_zooms()[3] # extract TR value
 
         ########### Run the loop for each slice:
-        physio_dir=self.denoising_dir.format(ID) + '/'+task_name+ '/'+ self.config["denoising"]["denoised_dir"].format(ID) +'/'+ structure  # output directory
-        output_main_file= physio_dir +os.path.basename(func_file.split('.')[0] + "_"+tag_name+ '.nii.gz')
+        physio_dir = os.path.join(self.denoising_dir.format(ID), task_name, self.config["denoising"]["denoised_dir"].format(ID), structure)  # output directory
+        output_main_file = os.path.join(physio_dir, os.path.basename(func_file.split('.')[0] + "_"+tag_name+ '.nii.gz'))
 
         if not os.path.exists(output_main_file) or redo:
-            if verbose==True:
+            if verbose:
                 print("----------------------------------------------------------")
                 print("Denoising fMRI data for participant: " + ID + " : " + task_name + " " + run_name)
                 print("----------------------------------------------------------")
 
-            os.makedirs(f'{physio_dir}/{structure}/tmp{run_name}/', exist_ok=True) # create tmp folder to save each slice denoised image
+            os.makedirs(os.path.join(physio_dir, structure, f"tmp{run_name}"), exist_ok=True) # create tmp folder to save each slice denoised image
 
-            slice_number=func_img.header.get_data_shape()[2] if slice_wise==True else 1
+            slice_number = func_img.header.get_data_shape()[2] if slice_wise else 1
             slice_range = range(slice_number) if slice_wise else [None]
 
             for slice_nb in range(0,slice_number):
                 slice_str = f"{slice_nb + 1:03d}" if slice_wise else ""
                 confounds_f_slice = confounds_file.split("_slice")[0] +"_slice" + str(slice_str) + ".txt" if slice_wise else confounds_file
-                output_tag="_slice"+str(slice_str) if slice_wise==True else ""
-                output_file=f'{physio_dir}/{structure}/tmp{run_name}/' +os.path.basename(func_file.split('.')[0] + "_"+tag_name+ output_tag+'.nii.gz')
-
+                output_tag = "_slice"+str(slice_str) if slice_wise else ""
+                output_file = os.path.join(physio_dir, structure, f"tmp{run_name}", os.path.basename(func_file.split('.')[0] + "_"+tag_name+ output_tag + '.nii.gz'))
 
                 if not os.path.exists(output_file) or redo:
                     mask_img=nib.load(mask_file) # load the mask image
-                    
+
                     if slice_wise:
-                        func_slice=func_img.slicer[:,:,slice_nb:slice_nb+1,:] # cropped func slices
-                        mask_slice=mask_img.slicer[:,:,slice_nb:slice_nb+1] # cropped mask slices
+                        func_slice = func_img.slicer[:,:,slice_nb:slice_nb+1,:] # cropped func slices
+                        mask_slice = mask_img.slicer[:,:,slice_nb:slice_nb+1] # cropped mask slices
                     else:
-                        func_slice=func_img
-                        mask_slice=mask_img
+                        func_slice = func_img
+                        mask_slice = mask_img
 
                     # extract the mask value to check if there are not empty if so do not denoised this slice
                     data = mask_slice.get_fdata()
 
                     if np.mean(data) != 0:
                         Clean_image=image.clean_img(func_slice,
-                                                confounds= confounds_f_slice,
+                                                confounds=confounds_f_slice,
                                                 mask_img=mask_slice,
                                                 detrend=detrend,
                                                 standardize=standardize,
@@ -1042,7 +1028,7 @@ class Denoising:
                                                 high_pass=high_pass,
                                                 t_r=TR)
 
-                        Clean_image.to_filename(output_file) #save image
+                        Clean_image.to_filename(output_file)  #save image
                     else:
                         func_slice.to_filename(output_file)
 
@@ -1050,19 +1036,18 @@ class Denoising:
                 # merge each slices in a single img
 
                 if not os.path.exists(output_main_file) or redo:
-                    nifti_files = glob.glob(f'{physio_dir}/{structure}/tmp{run_name}/*.nii.gz')
+                    nifti_files = glob.glob(os.path.join(physio_dir, structure, f"tmp{run_name}", "*.nii.gz"))
                     nifti_files.sort()  # Alphabetical sort
 
-                    fsl_command="fslmerge -z " + output_main_file + " " + " ".join(nifti_files)
-                    os.system(fsl_command)# run fsl command
+                    fsl_command = "fslmerge -z " + output_main_file + " " + " ".join(nifti_files)
+                    os.system(fsl_command)  # run fsl command
 
-                    shutil.rmtree(f'{physio_dir}/{structure}/tmp{run_name}/') #remove the tmp folder
+                    shutil.rmtree(os.path.join(physio_dir, structure, f"tmp{run_name}"))  # remove the tmp folder
 
-
-        output_meanfinal_file=output_main_file.split(".")[0] + "_mean.nii.gz"
+        output_meanfinal_file = output_main_file.split(".")[0] + "_mean.nii.gz"
 
         if not os.path.exists(output_meanfinal_file):
-            fsl_command="fslmaths " + output_main_file + " -Tmean " + output_meanfinal_file
+            fsl_command = "fslmaths " + output_main_file + " -Tmean " + output_meanfinal_file
             os.system(fsl_command)# run fsl command
 
         return output_main_file
@@ -1083,7 +1068,7 @@ class Denoising:
                     std = signals.std(axis=0)
                     std[std < np.finfo(np.float64).eps] = 1.  # avoid numerical problems
                     signals=signals-mean # demean
-                    signals/= std
+                    signals /= std
 
                 # save into filename
                 std_image=image.new_img_like(input_files[file_nb], signals.T.reshape(timeseries.shape),copy_header=True)
@@ -1095,6 +1080,6 @@ class Denoising:
 
                 if json_files is not None:
                     infos={"standardize":True,
-                          "mask":mask_files[sbj_nb]}
+                          "mask":mask_files[file_nb]}
                     with open(json_files[file_nb], 'w') as f:
                         json.dump(infos, f) # save info

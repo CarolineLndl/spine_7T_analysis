@@ -26,7 +26,6 @@
 # Imports
 import sys, json, glob, os, re, shutil, argparse
 import pandas as pd
-from IPython.display import Image, display
 
 # get path of the parent location of this file, and go up one level
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -70,7 +69,7 @@ print("Redo steps: ", redo, flush=True)
 print("================================", flush=True)
 
 # Load participants info
-participants_tsv = pd.read_csv(os.path.join(path_code,'config', 'participants.tsv'), sep='\t',dtype={'participant_id': str})
+participants_tsv = pd.read_csv(os.path.join(path_code, 'config', 'participants.tsv'), sep='\t',dtype={'participant_id': str})
 acq_parameters = []
 
 new_IDs=[]
