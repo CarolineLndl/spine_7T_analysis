@@ -182,8 +182,8 @@ i_fnames_glm_pair=[];i_fnames_tSNR_pair=[]
 for task_name in config["design_exp"]["task_names"]:
     for acq_name in config["design_exp"]["acq_names"]:
         tag="task-" + task_name + "_acq-" + acq_name
-        i_fnames_glm_pair.append(os.path.join(second_level_dir.format(tag),f"n{len(IDs)-1}_{tag}_t_clustercorrected.nii.gz"))
-        i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("tsnr"),f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
+        i_fnames_glm_pair.append(os.path.join(second_level_dir.format(tag),f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
+        i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"),f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
 
 output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
@@ -210,7 +210,7 @@ tsnr_plot=figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair,
 
 figures.combine_plots(output_fname=f"{output_fig}/n{len(IDs)}_combined_plots.png",
                       row1_files=[tsnr_plot,glm_plot],
-                      row2_files=[box_plot,bar_plot,dist_plot],
+                      row2_files=[box_plot["tsnr"],box_plot["ssnr"],bar_plot,dist_plot],
                       figsize=(3.5, 4.5), redo=True)
 
 

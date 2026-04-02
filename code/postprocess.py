@@ -568,7 +568,6 @@ class TSNR_main:
 
         # Keep only 'rest' rows for IDs that have both 'motor' and 'rest'
         for metric in ["tsnr","ssnr"]:
-            print(self.fname_metrics[metric])
             if not os.path.exists(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv"):
                 ids_with_both = dfs[metric].groupby('IDs')['task'].apply(
                     lambda x: set(['motor', 'rest']).issubset(set(x))
@@ -1480,13 +1479,7 @@ def count_roi_in_template(path_output, ID, task, acq_name, fname_func, fname_war
                           fname_template, redo):
     fname_ones_in_func = os.path.join(path_output, f"sub-{ID}_task-{task}_acq-{acq_name}_ones.nii.gz")
     fname_ones_in_template = os.path.join(path_output, f"sub-{ID}_task-{task}_acq-{acq_name}_ones_in_PAM50.nii.gz")
-    print(path_output)
-    print(ID)
-    print(task)
-    print(acq_name)
-    print(fname_func)
-    print(fname_warp_from_func_to_template)
-    print(fname_template)
+    
     if not os.path.exists(fname_ones_in_func) or redo:
         nii_tmp = nib.load(fname_func)
         data_ones = np.ones_like(nii_tmp.get_fdata())
