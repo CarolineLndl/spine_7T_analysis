@@ -59,7 +59,7 @@ class Figures_main:
         os.makedirs(self.first_level_fig,exist_ok=True)
         os.makedirs(self.second_level_fig,exist_ok=True)
      
-    def plot_first_level_maps(self, i_fnames=None, output_fname=None,titles=["shimBase","shimSlice",""],cmap="autumn",stat_min=1.6, stat_max=4,background_fname=None,mask_fname=None, underlay_fname=None,task_name=None,plot_mip=True, verbose=True, redo=False,n_cols=5):
+    def plot_first_level_maps(self, i_fnames=None, output_fname=None,titles=["shimBase","shimSlice"],cmap="autumn",stat_min=1.6, stat_max=4,background_fname=None,mask_fname=None, underlay_fname=None,task_name=None,plot_mip=True, verbose=True, redo=False,n_cols=5):
         """
         Plot first-level statistical maps for multiple participants and contrasts in a grid layout.
 
@@ -263,111 +263,105 @@ class Figures_main:
         
         return output_fname
     
-    def plot_two_maps(self, i_fnames_pair=None, output_fname=None,stat_min=2.3, stat_max=5,background_fname=None,cbar_label='t-value',cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
-        """
-        Plot second-level statistical maps for two maps.
+    def plot_fmri_maps(self, i_fnames=None, output_fname=None, stat_min=2.3, stat_max=5,titles = ["shimBase", "shimSlice"],
+                  background_fname=None, cbar_label='t-value', cmap="autumn",z_slices=[None,None],
+                  mask_fname=None, underlay_fname=None, task_name=None, verbose=True, redo=False):
 
-
-        To do: 
-        - plot GM
-        - add spinal levels in the coronal view 
-
-        """
         if output_fname is None:
             raise ValueError("output_dir is empty")
-        if i_fnames_pair is None or len(i_fnames_pair) == 0:
+        if i_fnames is None or len(i_fnames) == 0:
             raise ValueError("i_fnames_pair is empty")
-        if background_fname is None :
+        if background_fname is None:
             raise ValueError("Please provide PAM50 template filename")
 
-        # --- Figure and gridspec ---
-        fig = plt.figure(figsize=(2, 3.5))
-        fig.subplots_adjust(left=0.01,right=0.99,top=0.95,bottom=0.01)
-        
-        height_ratios = [6.5, 2.3]  # coronal, axial
-        
-        gs = fig.add_gridspec(nrows=2, ncols=4, 
-                              height_ratios=height_ratios,
-                               width_ratios=[0.2,0.1,1,1], hspace=0.01, wspace=0.05)
+        assert len(i_fnames) in [1, 2], f"Expected 1 or 2 maps, got {len(i_fnames)}"
+        n_maps = len(i_fnames)
 
+        # --- Figure and gridspec ---
+        fig = plt.figure(figsize=(n_maps, 3.5))  # width scales with number of maps
+        fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.01)
+
+        height_ratios = [6.5, 2.3]
+        gs = fig.add_gridspec(nrows=2, ncols=2 + n_maps,
+                            height_ratios=height_ratios,
+                            width_ratios=[0.2, 0.1] + [1] * n_maps,
+                            hspace=0.01, wspace=0.05)
 
         # --- Load template, mask, and underlay ---
         template_img = nib.load(background_fname)
         template_data = nib.as_closest_canonical(template_img).get_fdata()
-        
+
         if underlay_fname is not None:
             underlay_data = nib.as_closest_canonical(nib.load(underlay_fname)).get_fdata()
-        
-        # --- Plotting ---
-        num_voxels_list=[];values_list=[]
 
-        for i, fname in enumerate(i_fnames_pair):
+        # --- Plotting ---
+        num_voxels_list = []
+        values_list = []
+
+        for i, fname in enumerate(i_fnames):
             stat_img = nib.as_closest_canonical(nib.load(fname))
             statmap_data = stat_img.get_fdata()
 
-            # Count suprathreshold voxels
             num_voxels_list.append(np.nansum(statmap_data > stat_min))
-            values_list.append(statmap_data.flatten()) 
+            values_list.append(statmap_data.flatten())
 
             # --- Coronal slice ---
             x_min, x_max = 35, 105
             z_min, z_max = 200, 333
-            y_slice = np.unravel_index(np.nanargmax(statmap_data), statmap_data.shape)[1]
-            
-
-            # Find y_slice along y-axis with maximum intensity
-            crop_data = statmap_data[x_min:x_max, :, z_min:z_max]
-            y_slice = 72#np.argmax(np.nanmax(crop_data, axis=(0, 2)))  # max over x and z, returns y index
-            cor_slice = statmap_data[x_min:x_max,y_slice,z_min:z_max]
+            y_slice = 72
+            cor_slice = statmap_data[x_min:x_max, y_slice, z_min:z_max]
             cor_slice = np.where(cor_slice > stat_min, cor_slice, np.nan)
-            cor_slice=cor_slice.T
+            cor_slice = cor_slice.T
 
             ax_cor = fig.add_subplot(gs[0, i+2])
             template_cor = template_data[x_min:x_max, y_slice, z_min:z_max].T
             ax_cor.imshow(template_cor, cmap="gray", origin="lower", aspect="auto")
             im_cor = ax_cor.imshow(cor_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
-            ax_cor.text(0.5, 0.01, f"y={y_slice}", color="white", fontsize=5,ha="center", va="bottom", transform=ax_cor.transAxes)
-            
+            ax_cor.text(0.5, 0.01, f"y={y_slice}", color="white", fontsize=5,
+                        ha="center", va="bottom", transform=ax_cor.transAxes)
             ax_cor.axis("off")
+            ax_cor.set_title(titles[i], color="black", fontweight='bold', fontsize=7, fontname="Arial")
 
             # --- Axial slice ---
             crop_x = 30
             crop_y = 30
             x0 = statmap_data.shape[0] // 2
             y0 = statmap_data.shape[1] // 2
-            x_min, x_max = x0 - crop_x, x0 + crop_x
-            y_min, y_max = y0 - crop_y, y0 + crop_y
-            
-            crop_data = statmap_data[x_min:x_max, y_min:y_max, :]
-            z_slice = np.argmax(np.nanmax(crop_data, axis=(0, 1)))  # max over x and z, returns y index
+            x_min_axi, x_max_axi = x0 - crop_x, x0 + crop_x
+            y_min_axi, y_max_axi = y0 - crop_y, y0 + crop_y
+
+            crop_data = statmap_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, :]
+            if z_slices[i] is None:
+               z_slice = np.argmax(np.nanmax(crop_data, axis=(0, 1)))
+            else:
+                z_slice = z_slices[i]
+
             axi_slice = crop_data[:, :, z_slice]
             axi_slice = np.where(axi_slice > stat_min, axi_slice, np.nan)
-            axi_slice=axi_slice.T
+            axi_slice = axi_slice.T
 
             ax_axi = fig.add_subplot(gs[1, i+2])
-            template_axi = template_data[x_min:x_max, y_min:y_max, z_slice].T
+            template_axi = template_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, z_slice].T
             ax_axi.imshow(template_axi, cmap="gray", origin="lower", aspect="auto")
 
             if underlay_fname:
-                underlay_axi = underlay_data[x_min:x_max, y_min:y_max, z_slice].T
-                ax_axi.imshow(underlay_axi, cmap="gray", origin="lower", aspect="auto",alpha=0.1)
+                underlay_axi = underlay_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, z_slice].T
+                ax_axi.imshow(underlay_axi, cmap="gray", origin="lower", aspect="auto", alpha=0.1)
 
             im_axi = ax_axi.imshow(axi_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
             ax_axi.axis("off")
-            ax_axi.text(0.5, 0.01, f"z={z_slice}", color="white", fontsize=5,ha="center", va="bottom", transform=ax_axi.transAxes)
+            ax_axi.text(0.5, 0.01, f"z={z_slice}", color="white", fontsize=5,
+                        ha="center", va="bottom", transform=ax_axi.transAxes)
             ax_cor.axhline(y=z_slice - z_min, color='white', linestyle='--', linewidth=0.8, alpha=0.7)
 
-            if i==0:
-                ax_cor.set_title(f"shimBase", color="black", fontweight='bold', fontsize=7, fontname="Arial")
+            # orientation labels only on first map
+            if i == 0:
                 ax_cor.text(0.05, 0.05, "L", transform=ax_cor.transAxes, color="white", fontsize=7, ha="left", va="bottom")
                 ax_cor.text(0.95, 0.05, "R", transform=ax_cor.transAxes, color="white", fontsize=7, ha="right", va="bottom")
                 ax_axi.text(0.02, 0.5, "L", transform=ax_axi.transAxes, color="white", fontsize=7, ha="left", va="center")
                 ax_axi.text(0.98, 0.5, "R", transform=ax_axi.transAxes, color="white", fontsize=7, ha="right", va="center")
                 ax_axi.text(0.5, 0.90, "A", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="top")
                 ax_axi.text(0.5, 0.12, "P", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="bottom")
-
-            else:
-                ax_cor.set_title(f"shimSlice", color="black", fontweight='bold', fontsize=7, fontname="Arial")
 
         # -- Shared colorbar
         cbar = self.plot_colorbar(
@@ -376,173 +370,27 @@ class Figures_main:
             stat_max=stat_max,
             cmap=cmap,
             label=cbar_label,
-            left=0.05, bottom=0.05, width=0.04, height=0.15
+            left=0.05 if n_maps == 2 else 0.11 ,
+            bottom=0.05, width=0.04, height=0.15 
         )
 
-        # -- plot spinal levels at the very left side
+        # -- Spinal levels
         ax_levels, ax_levels_txt = self.plot_spinal_levels(
-        fig=fig,
-        gs=gs,
-        ax_cor=ax_cor,
-        cor_slice_shape=cor_slice.shape,
-        z_min=z_min,
-        z_max=z_max
+            fig=fig,
+            gs=gs,
+            ax_cor=ax_cor,
+            cor_slice_shape=cor_slice.shape,
+            z_min=z_min,
+            z_max=z_max,
+            n_maps=n_maps
         )
-        
-        out_file=os.path.join(output_fname)
-        plt.savefig(out_file,transparent=True, dpi=300)
+
+        plt.savefig(output_fname, transparent=True, dpi=300)
         plt.close(fig)
 
         return output_fname
 
-
-    def plot_ICC_maps(self, i_fname=None, output_fname=None,stat_min=0.5, stat_max=0.9,background_fname=None,cmap="autumn",mask_fname=None, underlay_fname=None,task_name=None, verbose=True, redo=False):
-        """
-        Plot second-level statistical maps for two maps.
-
-        """
-        if output_fname is None:
-            raise ValueError("output_fname is empty")
-        if i_fname is None or len(i_fname) == 0:
-            raise ValueError("i_fnames_pair is empty")
-        if background_fname is None :
-            raise ValueError("Please provide PAM50 template filename")
-
-        # --- Figure and gridspec ---
-        fig = plt.figure(figsize=(1, 3))
-        fig.subplots_adjust(left=0.01,right=0.99,top=0.99,bottom=0.01)
-        
-        height_ratios = [6.5, 2.5]  # coronal, axial
-        
-        gs = fig.add_gridspec(nrows=2, ncols=3, 
-                              height_ratios=height_ratios,
-                               width_ratios=[0.2,0.1,1], hspace=0.01, wspace=0.05)
-
-
-        # --- Load template, mask, and underlay ---
-        template_img = nib.load(background_fname)
-        template_data = nib.as_closest_canonical(template_img).get_fdata()
-        
-        if underlay_fname is not None:
-            underlay_data = nib.as_closest_canonical(nib.load(underlay_fname)).get_fdata()
-        
-        # --- Plotting ---
-        num_voxels_list=[];values_list=[]
-
-        stat_img = nib.as_closest_canonical(nib.load(i_fname))
-        statmap_data = stat_img.get_fdata()
-
-        # --- Coronal slice ---
-        x_min, x_max = 35, 105
-        z_min, z_max = 172, 333
-
-        # Find y_slice along y-axis with maximum intensity
-        crop_data = statmap_data[x_min:x_max, :, z_min:z_max]
-        y_slice = 72#np.argmax(np.nanmax(crop_data, axis=(0, 2)))  # max over x and z, returns y index
-        cor_slice = statmap_data[x_min:x_max,y_slice,z_min:z_max]
-        cor_slice = np.where(cor_slice > stat_min, cor_slice, np.nan)
-        cor_slice=cor_slice.T
-
-        ax_cor = fig.add_subplot(gs[0, 2])
-        template_cor = template_data[x_min:x_max, y_slice, z_min:z_max].T
-        ax_cor.imshow(template_cor, cmap="gray", origin="lower", aspect="auto")
-        im_cor = ax_cor.imshow(cor_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
-        ax_cor.text(0.5, 0.01, f"y={y_slice}", color="white", fontsize=5,ha="center", va="bottom", transform=ax_cor.transAxes)
-            
-        ax_cor.axis("off")
-
-
-        # --- Axial slice ---
-        crop_x = 30
-        crop_y = 30
-        x0 = statmap_data.shape[0] // 2
-        y0 = statmap_data.shape[1] // 2
-        x_min, x_max = x0 - crop_x, x0 + crop_x
-        y_min, y_max = y0 - crop_y, y0 + crop_y
-            
-        crop_data = statmap_data[x_min:x_max, y_min:y_max, :]
-        z_slice = 310#np.argmax(np.nanmax(crop_data, axis=(0, 1)))  # max over x and z, returns y index
-        axi_slice = crop_data[:, :, z_slice]
-        axi_slice = np.where(axi_slice > stat_min, axi_slice, np.nan)
-        axi_slice=axi_slice.T
-
-        ax_axi = fig.add_subplot(gs[1, 2])
-        template_axi = template_data[x_min:x_max, y_min:y_max, z_slice].T
-        underlay_axi = underlay_data[x_min:x_max, y_min:y_max, z_slice].T
-        ax_axi.imshow(template_axi, cmap="gray", origin="lower", aspect="auto")
-        ax_axi.imshow(underlay_axi, cmap="gray", origin="lower", aspect="auto",alpha=0.1)
-            
-        im_axi = ax_axi.imshow(axi_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
-        ax_axi.axis("off")
-        ax_axi.text(0.5, 0.01, f"z={z_slice}", color="white", fontsize=5,ha="center", va="bottom", transform=ax_axi.transAxes)
-        ax_cor.axhline(y=z_slice - z_min, color='white', linestyle='--', linewidth=0.8, alpha=0.7)
-
-        ax_cor.text(0.05, 0.05, "L", transform=ax_cor.transAxes, color="white", fontsize=7, ha="left", va="bottom")
-        ax_cor.text(0.95, 0.05, "R", transform=ax_cor.transAxes, color="white", fontsize=7, ha="right", va="bottom")
-        ax_axi.text(0.02, 0.5, "L", transform=ax_axi.transAxes, color="white", fontsize=7, ha="left", va="center")
-        ax_axi.text(0.98, 0.5, "R", transform=ax_axi.transAxes, color="white", fontsize=7, ha="right", va="center")
-        ax_axi.text(0.5, 0.90, "A", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="top")
-        ax_axi.text(0.5, 0.12, "P", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="bottom")
-
-        # -- Shared colorbar
-        
-        cbar_ax = fig.add_axes([0.08, 0.05, 0.08, 0.15])  # left, bottom, width, height
-        norm = plt.Normalize(vmin=stat_min, vmax=stat_max)
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-
-        cbar = fig.colorbar(sm, cax=cbar_ax)
-        cbar.set_label('icc', fontsize=6, labelpad=1.5,fontweight='bold',fontname="Arial")
-        cbar.ax.set_yticks([])
-        cbar.ax.text(1.35, 1.1, f"{stat_max:.1f}", fontsize=6, va='center', ha='right', color='black', transform=cbar.ax.transAxes)
-        cbar.ax.text(1.35, -0.12, f"{stat_min:.1f}", fontsize=6, va='center', ha='right', color='black', transform=cbar.ax.transAxes)
-        cbar.ax.set_frame_on(False)
-
-        # -- plot spinal levels at the very left side
-        ax_levels = fig.add_subplot(gs[0, 1])
-        ax_levels.axis("off") 
-        spinal_levels = {5: range(300, 333),  # C5
-                     6: range(269, 300),  # C6
-                     7: range(238, 269),  # C7
-                     8: range(206, 238),  # C8
-                     9: range(172, 206)  # T1
-                     } 
-        data_spinal_levels = np.zeros((cor_slice.shape[0], z_max - z_min))  # height x width
-        print(data_spinal_levels.shape)
-        for level, z_range in spinal_levels.items():
-            z_start = max(z_range.start, z_min)
-            z_end = min(z_range.stop, z_max)
-            if z_start >= z_end:
-                continue
-
-            z_inds = np.arange(z_start, z_end) - z_min  
-            data_spinal_levels[:, z_inds] = level  
-        
-        data_spinal_alpha = np.zeros_like(data_spinal_levels, dtype=float)
-        data_spinal_alpha[data_spinal_levels > 0] = 1
-        data_spinal_levels_2 = np.copy(data_spinal_levels).astype(float)
-        data_spinal_levels_2[data_spinal_levels % 2 == 0] = 0.5
-        data_spinal_levels_2[data_spinal_levels % 2 == 1] = 0.75 
-
-        ax_levels.imshow(data_spinal_levels_2.T, cmap="gray", vmin=0, vmax=1, alpha=data_spinal_alpha.T, origin='lower', aspect='auto')
-
-        # --- Add text for the segmental labels
-        ax_levels_txt = fig.add_subplot(gs[0, 0])
-        ax_levels_txt.axis("off")  # we only want labels and lines
-
-        ax_levels_txt.text(-0.24, 0.9, "C5", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.68, "C6", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.49, "C7", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.3, "C8", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-        ax_levels_txt.text(-0.24, 0.1, "T1", transform=ax_cor.transAxes, color="black", fontsize=6, ha="center", va="center",fontweight='bold',fontname="Arial")
-
-        out_file=os.path.join(output_fname)
-        plt.savefig(out_file, dpi=300)
-        plt.close(fig)
-
-    
-
-    def plot_spinal_levels(self, fig, gs, ax_cor, cor_slice_shape, z_min, z_max):
+    def plot_spinal_levels(self, fig, gs, ax_cor, cor_slice_shape, z_min, z_max,n_maps):
         """
         Plot spinal level color bands and segmental labels on a figure.
 
@@ -594,10 +442,11 @@ class Figures_main:
         # --- Segmental labels
         ax_levels_txt = fig.add_subplot(gs[0, 0])
         ax_levels_txt.axis("off")
+        x_pos = -1.3 if n_maps == 2 else -0.25
 
         labels = [("C5", 0.86), ("C6", 0.63), ("C7", 0.4), ("C8", 0.18), ("", 0.1)]
         for label, y_pos in labels:
-            ax_levels_txt.text(-1.3, y_pos, label, transform=ax_cor.transAxes,
+            ax_levels_txt.text(x_pos, y_pos, label, transform=ax_cor.transAxes,
                             color="black", fontsize=6, ha="center", va="center",
                             fontweight='bold', fontname="Arial")
 

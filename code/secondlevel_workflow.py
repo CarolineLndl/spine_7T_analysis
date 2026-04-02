@@ -190,28 +190,28 @@ output_fig=os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "s
 bar_plot=figures.bar_plot(csv_pair=metrics_csv_pair,output_fname=f"{output_fig}/n{len(IDs)}_glm_nb_vox.png")
 dist_plot=figures.plot_dist(csv_pair=[values_csv_pair[1],values_csv_pair[0]], maps_name = ["shimSlice","shimBase"],colors = ["#ED263F","#ADA8A8"],output_fname=f"{output_fig}/n{len(IDs)}_glm_distr.png")
 
-glm_plot=figures.plot_two_maps(i_fnames_pair=i_fnames_glm_pair, 
+glm_plot=figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair, 
                                    output_fname=f"{output_fig}/n{len(IDs)}_glm_avg_map.png",
                                    stat_min=2.3, 
                                    stat_max=6,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
-tsnr_plot=figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair, 
+tsnr_plot=figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair, 
                                    output_fname=f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png",
                                    stat_min=5, 
                                    stat_max=18,
                                    cmap='turbo',
                                    cbar_label='tSNR',
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]))
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
 
 # --- Combine side by side ---
 
 figures.combine_plots(output_fname=f"{output_fig}/n{len(IDs)}_combined_plots.png",
                       map_files=[tsnr_plot,glm_plot],
                       graph_files=[box_plot["tsnr"],box_plot["ssnr"],bar_plot,dist_plot],
-                      figsize=(7.5, 4), redo=True)
+                      figsize=(7.5, 4), redo=redo)
 
 
 
@@ -231,8 +231,6 @@ i_fnames_by_runs = []
 tag="task-motor_acq-shimSlice+3mm"
 IDs_2runs=[]
 for ID in IDs:
-    if ID=="090":
-        continue
     raw_func = sorted(glob.glob(os.path.join( config["raw_dir"], f"sub-{ID}", "func", f"sub-{ID}_{tag}_*bold.nii.gz")))
     
     # Only keep participants with 2 runs
@@ -250,13 +248,15 @@ for ID in IDs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 icc_maps,icc_maps_s=glm_ana.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
-#postprocess.plot_ICC_maps(i_fname=icc_maps,
- #                         output_fname=output_fig + "/icc_run-01_run-02.png",
-  #                        cmap="turbo",
-   #                       stat_min=0.1,
-    #                      stat_max=0.9,
-     #                     background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-      #                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
+figures.plot_fmri_maps(i_fnames=[icc_maps],
+                          output_fname=f"{output_fig}/n{len(IDs)}_icc_run-01_run-02.png",
+                          titles=["ICC"],
+                          cmap="viridis",
+                          z_slices=[262],
+                          stat_min=0.1,
+                          stat_max=0.9,
+                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
 
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
