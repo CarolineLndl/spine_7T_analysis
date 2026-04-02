@@ -1,5 +1,4 @@
 participant_id	age	sex	handedness	test-rest	sms2	func_vert_fov	anat_vert_fov	anat_disc_ref	anat_disc_ref_z
-090	23	M	right	0	0	c4t2	c2t3	c3	55
 093	29	M	right	0	0	c3t2	c2t3	c3	51
 094	45	M	right	0	0	c4t2	c2t3	c4	47
 095	40	M	right	1	0	c2t1	c1t2	c3	50
