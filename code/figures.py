@@ -972,45 +972,73 @@ class Figures_main:
         
         return output_fname
 
-    def combine_plots(self, output_fname, row1_files, row2_files,
-                  figsize=(7, 3.5), redo=False):
+    def combine_plots(self, output_fname, map_files, graph_files,
+                  map_titles=["SNR", "GLM"], graph_titles=None,
+                  figsize=(3.15, 10), graph_width_scale=0.9, redo=False):
+
+        assert len(map_files) == 2, f"Expected 2 map_files, got {len(map_files)}"
+        assert len(graph_files) == 4, f"Expected 4 graph_files, got {len(graph_files)}"
+
         if not os.path.exists(output_fname) or redo:
             fig = plt.figure(figsize=figsize)
-            gs = fig.add_gridspec(1, 3,
-                                width_ratios=[1, 1, 1.5],
-                                hspace=0.05, wspace=0.1)
+            gs = fig.add_gridspec(2, 4,
+                                width_ratios=[1.4, 1.4, 1, 1],
+                                hspace=0.05, wspace=0.01)
 
-            # --- Col 0: tSNR map
-            ax_tsnr = fig.add_subplot(gs[0, 0])
-            img = mpimg.imread(row1_files[0])
-            ax_tsnr.imshow(img, aspect='auto')
-            ax_tsnr.axis('off')
-            ax_tsnr.text(0, 1, "A.", ha='left', va='top', fontsize=8,
-                        fontweight='bold', fontname="Arial", transform=ax_tsnr.transAxes)
+            label_y = 1.02  # same y for all labels
 
-            # --- Col 1: GLM map
-            ax_glm = fig.add_subplot(gs[0, 1])
-            img = mpimg.imread(row1_files[1])
-            ax_glm.imshow(img, aspect='auto')
-            ax_glm.axis('off')
-            ax_glm.text(0, 1, "B.", ha='left', va='top', fontsize=8,
-                        fontweight='bold', fontname="Arial", transform=ax_glm.transAxes)
-
-            # --- Col 2: 2x2 nested grid
-            gs_right = gs[0, 2].subgridspec(2, 2, hspace=0.001, wspace=0.2)
-
-            stat_labels = ["C.", "D.", "E.", "F."]
-            positions = [(0, 0), (0, 1), (1, 0), (1, 1)]  # tSNR | sSNR / act vox | t-val
-
-            for i, (r, c) in enumerate(positions):
-                ax = fig.add_subplot(gs_right[r, c])
-                img = mpimg.imread(row2_files[i])
+            # --- Col 1 & 2: maps spanning both rows ---
+            for i, fname in enumerate(map_files):
+                ax = fig.add_subplot(gs[:, i])
+                img = mpimg.imread(fname)
+                h, w = img.shape[:2]
                 ax.imshow(img, aspect='auto')
+                ax.set_xlim(0, w)
+                ax.set_ylim(h, 0)
                 ax.axis('off')
-                ax.text(0, 1, stat_labels[i], ha='left', va='top', fontsize=8,
-                        fontweight='bold', fontname="Arial", transform=ax.transAxes)
 
-            fig.subplots_adjust(wspace=0.05, hspace=0.001,
-                                left=0.01, right=1, top=0.99, bottom=0)
-            plt.savefig(output_fname, dpi=300, transparent=True)
+                ax.text(0.0, label_y, f"{chr(65+i)}.",
+                        ha='left', va='bottom',
+                        fontsize=8, fontweight='bold', fontname="Arial",
+                        transform=ax.transAxes,
+                        clip_on=False)
+
+                if map_titles:
+                    ax.text(0.5, label_y,
+                            map_titles[i],
+                            ha='center', va='bottom',
+                            fontsize=7, fontweight='bold', fontname="Arial",
+                            transform=ax.transAxes,
+                            clip_on=False)
+
+            # --- Col 3 & 4, Row 1 & 2: graphs in 2x2 grid ---
+            for i, fname in enumerate(graph_files):
+                row = i // 2       # 0, 0, 1, 1
+                col = 2 + (i % 2)  # 2, 3, 2, 3
+
+                ax = fig.add_subplot(gs[row, col])
+                img = mpimg.imread(fname)
+                margin = (1 - graph_width_scale) / 2
+                ax_inner = ax.inset_axes([margin, 0, graph_width_scale, 1])
+                ax_inner.imshow(img, aspect='auto')
+                ax_inner.axis('off')
+                ax.axis('off')
+
+                if graph_titles:
+                    ax_inner.set_title(graph_titles[i], fontsize=7,
+                                    fontweight='bold', fontname="Arial")
+
+                # only label top row graphs (i=0,1) to align with map labels
+                if row == 0:
+                    ax.text(0.0, label_y, f"{chr(65+len(map_files)+i)}.",  # C, D
+                            ha='left', va='bottom',
+                            fontsize=8, fontweight='bold', fontname="Arial",
+                            transform=ax.transAxes,
+                            clip_on=False)
+
+            fig.subplots_adjust(wspace=0.05, hspace=0.05,
+                                left=0.01, right=0.99, top=0.93, bottom=0.01)
+            plt.savefig(output_fname, dpi=300, transparent=True, bbox_inches='tight')
             plt.close()
+            
+       

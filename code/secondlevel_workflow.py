@@ -209,9 +209,9 @@ tsnr_plot=figures.plot_two_maps(i_fnames_pair=i_fnames_tSNR_pair,
 # --- Combine side by side ---
 
 figures.combine_plots(output_fname=f"{output_fig}/n{len(IDs)}_combined_plots.png",
-                      row1_files=[tsnr_plot,glm_plot],
-                      row2_files=[box_plot["tsnr"],box_plot["ssnr"],bar_plot,dist_plot],
-                      figsize=(3.5, 4.5), redo=True)
+                      map_files=[tsnr_plot,glm_plot],
+                      graph_files=[box_plot["tsnr"],box_plot["ssnr"],bar_plot,dist_plot],
+                      figsize=(7.5, 4), redo=True)
 
 
 
