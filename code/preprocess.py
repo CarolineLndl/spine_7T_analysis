@@ -579,7 +579,7 @@ class Preprocess_Sc:
         return o_img
 
 
-    def label_vertebrae(self, ID=None, i_img=None, seg_img=None, c="t2", labels=range(1, 15), auto=True, o_folder=None, ses_name="", task_name="", tag="", redo=False, verbose=True):
+    def label_vertebrae(self, ID=None, i_img=None, seg_img=None, c="t2", labels=range(1, 15), auto=True, o_folder=None, ses_name="", task_name="", tag="", labels_to_keep=None, redo=False, verbose=True):
         """
         Labels vertebrae automatically (totalspineseg) or manually (labels provided in derivatives/).
 
@@ -587,6 +587,8 @@ class Preprocess_Sc:
         --------
         label_file : str
             Labeled vertebrae / disc image filename.
+        labels_to_keep : tuple
+            Label values to keep
         """
 
         # --- Input checks ------------------------------------------------------------------
@@ -647,6 +649,12 @@ class Preprocess_Sc:
 
             os.system(cmd)
 
+        labels_file_to_keep = label_file.split(".nii.gz")[0] + "_labels_to_keep.nii.gz"
+        if labels_to_keep is not None:
+            if not os.path.exists(labels_file_to_keep) or redo:
+                cmd = f"sct_label_utils -i {label_file} -o {labels_file_to_keep} -keep {','.join(map(str, labels_to_keep))} -qc {self.qc_dir} -qc-subject sub-{ID}"
+                os.system(cmd)
+
         # --- Use manual segmentation if available ---------------------------------------------------------
 
         if os.path.exists(o_manual):
@@ -687,9 +695,12 @@ class Preprocess_Sc:
 
             print(" ")
 
-        return label_file
+        if labels_to_keep is not None:
+            return labels_file_to_keep
+        else:
+            return label_file
 
-    def coreg_anat2PAM50(self,ID=None,i_img=None,o_folder=None,seg_img=None,labels_img=None,img_type="t2",param=None,ses_name='',task_name='',tag='T2w',redo=False,verbose=True):
+    def coreg_anat2PAM50(self,ID=None,i_img=None,o_folder=None,seg_img=None,labels_img=None,img_type="t2",param=None,ses_name='',task_name='',tag='T2w', redo=False,verbose=True):
 
         """
         Registers anatomical image to the PAM50 template and warps the template into anatomical space.

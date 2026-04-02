@@ -134,11 +134,15 @@ for ID_nb, ID in enumerate(IDs):
     #------------------------------------------------------------------
     #------ Vertebral labelling
     #------------------------------------------------------------------
+    # Manual fixing for participant 093 (the last vertebral level is too high and registration to PAM50 using >2 labels fails, see https://github.com/CarolineLndl/spine_7t_fmri_analysis/issues/101)
+    ID_using2labels = {"093": (3, 9)}
+
     disc_labels_files = preprocess_Sc.label_vertebrae(ID=ID,
                                                     i_img=raw_anat,
                                                     seg_img=seg_anat_sc_file,
                                                     c="t2",
                                                     auto=auto_vert_labels,
+                                                    labels_to_keep=ID_using2labels.get(ID),
                                                     redo=redo,
                                                     verbose=verbose)
 
