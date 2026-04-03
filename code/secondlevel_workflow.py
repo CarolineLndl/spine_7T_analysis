@@ -120,7 +120,7 @@ for acq_name in config["design_exp"]["acq_names"]:
                                   specify_y_label=y_label,
                                   x_data="acq",x_order=["shimBase","shimSlice"],
                                   indiv_values=True,
-                                  y_data=metric,redo=True)
+                                  y_data=metric,redo=redo)
 
 #------------------------------------------------------------------
 #------ Compute average FD
@@ -229,7 +229,7 @@ for cluster_corr in [0.01,0.001]:
                                    stat_max=6,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
 tsnr_plot=figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair, 
                                    output_fname=f"{output_fig}/n{len(IDs)}_tsnr_avg_map.png",
@@ -288,7 +288,7 @@ figures.plot_fmri_maps(i_fnames=[icc_maps],
                           stat_min=0.1,
                           stat_max=0.9,
                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
+                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
