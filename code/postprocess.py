@@ -385,7 +385,7 @@ class GLM_main:
             raise ValueError("Please provide the filename of the input image.")
         
         if o_fname==None:
-            o_fname=i_fname.split('.')[0]
+            o_fname=i_fname.split('.nii.gz')[0]
         
         fname_metrics = o_fname + "_metrics.csv"
         fname_values  = o_fname + "_values.csv"
@@ -401,16 +401,25 @@ class GLM_main:
             # --- Extract metrics ---
             all_values=data.flatten()
             threshold_values=all_values[all_values > threshold]
-            
-
-            df_metrics = pd.DataFrame([{
-                "total_voxels": len(threshold_values),
-                "nonzero_voxels": len(threshold_values),
-                "mean": np.mean(threshold_values),
-                "std": np.std(threshold_values),
-                "min": np.min(threshold_values),
-                "max": np.max(threshold_values),
-            }])
+            if len(threshold_values)>0:
+                df_metrics = pd.DataFrame([{
+                    "total_voxels": len(threshold_values),
+                    "nonzero_voxels": len(threshold_values),
+                    "mean": np.mean(threshold_values),
+                    "std": np.std(threshold_values),
+                    "min": np.min(threshold_values),
+                    "max": np.max(threshold_values),
+                }])
+            else:
+                df_metrics = pd.DataFrame([{
+                    "total_voxels": 0,
+                    "nonzero_voxels": 0,
+                    "mean": 0,
+                    "std": 0,
+                    "min": 0,
+                    "max": 0,
+                }])
+                
 
             df_values = pd.DataFrame({"voxels_values": threshold_values})
     

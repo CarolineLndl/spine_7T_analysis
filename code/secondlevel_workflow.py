@@ -161,29 +161,23 @@ print("")
 
 common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz").format("glm")
 
-metrics_csv_pair=[];values_csv_pair=[]
-for task_name in ["motor"]:
-    for acq_name in config["design_exp"]["acq_names"]:
-        i_fnames=[]
-        tag="task-" + task_name + "_acq-" + acq_name
-        os.makedirs(second_level_dir.format(tag), exist_ok=True)
-        for ID in IDs:
-            if ID=="090":
-                continue
-            # define the run name if multiple runs exist
-            raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
-
-            # take only the first run
-            func_file = raw_func[0]
-
-            # extract run number if exists
-            match = re.search(r"_?(run-\d+)", func_file)
-            run_name = match.group(1) if match else ""
+for cluster_corr in [0.001,0.01]:
+    metrics_csv_pair=[];values_csv_pair=[]
+    for task_name in ["motor"]:
+        for acq_name in config["design_exp"]["acq_names"]:
+            i_fnames=[]
+            tag="task-" + task_name + "_acq-" + acq_name
+            os.makedirs(second_level_dir.format(tag), exist_ok=True)
+            for ID in IDs:
+                raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
+                func_file = raw_func[0]# take only the first run
             
-            # find the corresponding first-level file
-            i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
+                # extract run number if exists
+                match = re.search(r"_?(run-\d+)", func_file)
+                run_name = match.group(1) if match else ""
+                
+                i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])# find the corresponding first-level file
 
-        for cluster_corr in [0.001,0.01]:
             z_map_file=glm_ana.run_second_level_glm(i_fnames=i_fnames,
                                                             mask_fname=common_mask_fname,
                                                             task_name=tag,
@@ -191,9 +185,10 @@ for task_name in ["motor"]:
                                                             parametric=False,
                                                             n_perm=10000,
                                                             vox_thr=0.01,
+                                                            cluster_corr=cluster_corr,
                                                             redo=redo,
                                                             verbose=verbose)
-
+            
             metrics_csv,values_csv=glm_ana.extract_metrics(i_fname=z_map_file,threshold=0)
             metrics_csv_pair.append(metrics_csv)
             values_csv_pair.append(values_csv)
