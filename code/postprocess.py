@@ -627,6 +627,7 @@ class TSNR_main:
 
         # Keep only 'rest' rows for IDs that have both 'motor' and 'rest'
         for metric in ["tsnr","ssnr"]:
+
             if not os.path.exists(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv"):
                 ids_with_both = dfs[metric].groupby('IDs')['task'].apply(
                     lambda x: set(['motor', 'rest']).issubset(set(x))
@@ -634,11 +635,11 @@ class TSNR_main:
                 ids_with_both = ids_with_both[ids_with_both].index
                 df_reduced = dfs[metric][~((dfs[metric]['IDs'].isin(ids_with_both)) & (dfs[metric]['task'] == 'motor'))]
                 df_reduced.to_csv(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv", index=False)
-                self.pair_ttest(csv_file=[self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv"], value_col=metric, redo=self.redo)
+            pair_ttest(csv_files=[self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv"], value_col=metric, redo=self.redo)
 
             if not os.path.exists(self.fname_metrics[metric]):
                 dfs[metric].to_csv(self.fname_metrics[metric], index=False)
-                self.pair_ttest(csv_file=[self.fname_metrics[metric]], value_col=metric, redo=self.redo)
+                pair_ttest(csv_files=[self.fname_metrics[metric]], value_col=metric, redo=self.redo)
 
 
     def _extract_baseline_and_slicewise_tsnr_from_csv(self):
@@ -1512,8 +1513,8 @@ def make_legend_arrow(legend, orig_handle,
 
 def pair_ttest(df=None, csv_files=None, output_fname=None,index='IDs', value_col='tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase',task_filter=None, task_col='task', redo=False):
 
-        if output_fname==None and csv_file:
-            output_fname=csv_file.split('.csv')[0] + "_stats.csv"
+        if output_fname==None and csv_files:
+            output_fname=csv_files[0].split('.csv')[0] + "_stats.csv"
 
         if not os.path.exists(output_fname) or redo:
             if csv_files:
@@ -1521,7 +1522,7 @@ def pair_ttest(df=None, csv_files=None, output_fname=None,index='IDs', value_col
                     df_list = [pd.read_csv(f) for f in csv_files]
                     df = pd.concat(df_list, ignore_index=True) # contactenate all dataframes into one
                 else:
-                    df = pd.read_csv(csv_files)
+                    df = pd.read_csv(csv_files[0])
 
             # Filter by task if requested
             if task_filter:
