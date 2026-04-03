@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--ids", nargs='+', default=[""])
 parser.add_argument("--tasks", nargs='+', default=[""])
 parser.add_argument("--verbose", default="False")
-parser.add_argument("--redo", default="True")
+parser.add_argument("--redo", default="true")
 parser.add_argument("--path-data", required=True)
 args = parser.parse_args()
 
@@ -69,7 +69,7 @@ denoising_dir= os.path.join(config["raw_dir"], config["denoising"]["dir"])
 manual_dir = os.path.join(config["raw_dir"], config["manual_dir"])
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 main_fig_dir = os.path.join(config["raw_dir"], "derivatives", "processing", "figures")
-fig_dir = os.path.join(main_fig_dir, "firstlevel")
+fig_dir = os.path.join(main_fig_dir, "first_level")
 os.makedirs(main_fig_dir, exist_ok=True)
 
 #------------------------------------------------------------------
@@ -207,7 +207,7 @@ for ID_nb, ID in enumerate(IDs):
     print("")
 
 #------------------------------------------------------------------
-#------ II. Extract the commun mask for all participants and tasks
+#------ II. Extract the common mask for all participants and tasks
 #------------------------------------------------------------------
 glm_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"].format("glm",""))
 common_mask_fname = os.path.join(glm_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
@@ -243,7 +243,7 @@ i_fnames_by_runs = []
 for ID in IDs:
     if ID=="090":
         continue
-    #Check i their is multiple run for this participant
+    # Check if there are multiple runs for this participant
     i_fnames_runs=[]
     for task_name in config["design_exp"]["task_names"]:
         for acq_name in config["design_exp"]["acq_names"]:

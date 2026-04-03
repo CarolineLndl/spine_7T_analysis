@@ -778,17 +778,15 @@ class EpiComparison:
 
         self.path_main_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"])
         self.path_fig_epi_comparison = os.path.join(self.path_main_fig, "epi_comparison")
-        if not os.path.exists(self.path_fig_epi_comparison):
-            os.makedirs(self.path_fig_epi_comparison)
+        os.makedirs(self.path_fig_epi_comparison, exist_ok=True)
         self.path_fig_data = os.path.join(self.path_fig_epi_comparison, "data")
-        if not os.path.exists(self.path_fig_data):
-            os.makedirs(self.path_fig_data)
+        os.makedirs(self.path_fig_data, exist_ok=True)
 
     def create_figure(self, show_avg=False):
         print("=== Create EPI comparison figure ===", flush=True)
 
         for ID in self.IDs:
-            # Figure looks better if we use more volumes (task has more volumes than rest)
+            # Figure looks better if we use more volumes (task-motor has more volumes than rest)
             # try:
             #     create_mocomean_same_vols(ID, "rest", self.config, self.path_fig_data, self.redo)
             # except RuntimeError as e:
@@ -1022,7 +1020,6 @@ class EpiComparison:
                     else:
                         axs_baseline[idx].spines['top'].set_visible(False)
                         axs_baseline[idx].spines['top'].set_visible(False)
-
 
                     axs_slicewise[idx].tick_params(axis='both', which='both', length=0, labelbottom=False,
                                                 labelleft=False, bottom=False, left=False)
@@ -1435,8 +1432,7 @@ def create_mocomean_same_vols(ID, task, config, path_output, redo=False):
         data_shimbase = np.mean(nii_shimbase.get_fdata()[:, :, :, :vols], axis=3)
         data_shimslice = np.mean(nii_shimslice.get_fdata()[:, :, :, :vols], axis=3)
 
-        if not os.path.exists(path_sub):
-            os.makedirs(path_sub)
+        os.makedirs(path_sub, exist_ok=True)
 
         nib.save(nib.Nifti1Image(data_shimbase, affine=nii_shimbase.affine, header=nii_shimbase.header),
                  fname_fig_shimbase)
