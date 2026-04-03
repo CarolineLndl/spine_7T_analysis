@@ -241,10 +241,8 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
 #------------------------------------------------------------------
 i_fnames_by_runs = []
 for ID in IDs:
-    if ID=="090":
-        continue
     # Check if there are multiple runs for this participant
-    i_fnames_runs=[]
+    i_fnames_runs = []
     for task_name in config["design_exp"]["task_names"]:
         for acq_name in config["design_exp"]["acq_names"]:
             tag="task-" + task_name + "_acq-" + acq_name
@@ -261,7 +259,7 @@ for ID in IDs:
                 else:
                     run_name=""
                 i_fnames_runs.append(glob.glob(os.path.join(first_level_dir.format("glm",ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
-                
+
     i_fnames_by_runs.append(i_fnames_runs)
 
 figures.plot_first_level_maps(i_fnames=i_fnames_by_runs,
@@ -271,6 +269,7 @@ figures.plot_first_level_maps(i_fnames=i_fnames_by_runs,
                                           titles=["shimBase","shimSlice","shimSlice"],
                                          #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
                                           task_name=tag,
+                                          participant_ids=IDs,
                                           verbose=True,
-                                           redo=redo)
+                                          redo=redo)
 

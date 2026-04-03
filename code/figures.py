@@ -41,7 +41,7 @@ class Figures_main:
         os.makedirs(self.first_level_fig,exist_ok=True)
         os.makedirs(self.second_level_fig,exist_ok=True)
      
-    def plot_first_level_maps(self, i_fnames=None, output_fname=None,titles=["shimBase","shimSlice"],cmap="autumn",stat_min=1.6, stat_max=4,background_fname=None,mask_fname=None, underlay_fname=None,task_name=None,plot_mip=True, verbose=True, redo=False,n_cols=5):
+    def plot_first_level_maps(self, i_fnames=None, output_fname=None,titles=["shimBase","shimSlice"],cmap="autumn",stat_min=1.6, stat_max=4,background_fname=None,mask_fname=None, underlay_fname=None,task_name=None,plot_mip=True, participant_ids=None, verbose=True, redo=False,n_cols=5):
         """
         Plot first-level statistical maps for multiple participants and contrasts in a grid layout.
 
@@ -147,8 +147,12 @@ class Figures_main:
 
                     if map_idx == 0:
                         x_center = 1.7 
-                        y_top = 1.2   
-                        ax_cor.text(x_center, y_top, f"ID #{subj_idx + 1}", ha='center', va='bottom', fontsize=8, fontweight='black', transform=ax_cor.transAxes, fontname="Arial")
+                        y_top = 1.2
+                        if participant_ids is not None:
+                            subj_label = participant_ids[subj_idx]
+                        else:
+                            subj_label = subj_idx + 1
+                        ax_cor.text(x_center, y_top, f"ID #{subj_label}", ha='center', va='bottom', fontsize=8, fontweight='black', transform=ax_cor.transAxes, fontname="Arial")
                         line_y = 1.2
                         ax_cor.hlines(y=line_y, xmin=0.15, xmax=3, colors='black', linewidth=0.8, transform=ax_cor.transAxes, clip_on=False)
         
@@ -157,8 +161,6 @@ class Figures_main:
                         ax_cor.set_title(f"{titles[1]}\nrun-01", color="black",  fontsize=6, fontname="Arial",y=0.94)
                     if map_idx == 2 and i_fname != None:
                         ax_cor.set_title(f"{titles[2]}\nrun-02", color="black",  fontsize=6, fontname="Arial",y=0.94)
-  
-                        
 
                     # Orientation labels only for first participant
                     if subj_idx == 0 and map_idx == 0:
