@@ -18,12 +18,11 @@ import pandas as pd
 from nilearn.glm import threshold_stats_img
 import nibabel as nib
 import numpy as np
-from collections import defaultdict
 
 # Get the environment variable PATH_CODE
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-with open(path_code + '/config/config_spine_7t_fmri.json') as config_file: # the notebook should be in 'xx/notebook/' folder #config_proprio
+with open(os.path.join(path_code, 'config', 'config_spine_7t_fmri.json')) as config_file: # the notebook should be in 'xx/notebook/' folder #config_proprio
     config = json.load(config_file) # load config file should be open first and the path inside modified
 
 parser = argparse.ArgumentParser()
@@ -43,7 +42,7 @@ path_data = os.path.abspath(args.path_data)
 config["raw_dir"]=path_data
 config["code_dir"]=path_code
 
-participants_tsv = pd.read_csv(path_code + '/config/participants.tsv', sep='\t',dtype={'participant_id': str})
+participants_tsv = pd.read_csv(os.path.join(path_code, 'config', 'participants.tsv'), sep='\t',dtype={'participant_id': str})
 
 new_IDs=[]
 if IDs == [""]:
@@ -56,10 +55,9 @@ if IDs == [""]:
 #    config["design_exp"]["task_names"] = tasks
 
 #Import scripts
-sys.path.append(path_code + "/code/") # Change this line according to your directory
+sys.path.append(os.path.join(path_code, "code")) # Change this line according to your directory
 import postprocess, preprocess
 import figures
-
 
 glm_ana=postprocess.GLM_main(config,IDs=IDs)
 preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
@@ -70,8 +68,8 @@ preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["ma
 denoising_dir= os.path.join(config["raw_dir"], config["denoising"]["dir"])
 manual_dir = os.path.join(config["raw_dir"], config["manual_dir"])
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
-main_fig_dir = os.path.join(config["raw_dir"], "derivatives/processing/figures/")
-fig_dir = os.path.join(main_fig_dir, "/firtlevel/")
+main_fig_dir = os.path.join(config["raw_dir"], "derivatives", "processing", "figures")
+fig_dir = os.path.join(main_fig_dir, "firstlevel")
 os.makedirs(main_fig_dir, exist_ok=True)
 
 #------------------------------------------------------------------
@@ -181,7 +179,7 @@ for ID_nb, ID in enumerate(IDs):
                     norm_stat_maps=preprocess_Sc.apply_warp(
                             i_img=[stat_maps[i]], # input clean image
                             ID=[ID],
-                            o_folder=[os.path.dirname(stat_maps[i]) + "/"], # output folder
+                            o_folder=[os.path.dirname(stat_maps[i])], # output folder
                             dest_img=os.path.join(path_code, "template", config["PAM50_t2"]), # PAM50 template
                             warping_field=warp_file,
                             tag="_inTemplate",
@@ -194,7 +192,7 @@ for ID_nb, ID in enumerate(IDs):
                 norm_mask.append(preprocess_Sc.apply_warp(
                             i_img=[cord_seg_file], # input clean image
                             ID=[ID],
-                            o_folder=[os.path.dirname(stat_maps[i]) + "/"], # output folder
+                            o_folder=[os.path.dirname(stat_maps[i])], # output folder
                             dest_img=os.path.join(path_code, "template", config["PAM50_t2"]), # PAM50 template
                             warping_field=warp_file,
                             tag="_inTemplate",
@@ -267,7 +265,7 @@ for ID in IDs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 figures.plot_first_level_maps(i_fnames=i_fnames_by_runs,
-                                         output_fname=os.path.join(main_fig_dir + "/first_level/", f"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
+                                         output_fname=os.path.join(fig_dir, f"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
                                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                           mask_fname=cropped_PAM50_fname,
                                           titles=["shimBase","shimSlice","shimSlice"],

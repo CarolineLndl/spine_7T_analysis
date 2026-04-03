@@ -1,9 +1,8 @@
 # Main imports ------------------------------------------------------------
-import sys, os, gzip, copy
+import os, gzip, copy
 import numpy as np
 import nibabel as nib
 import json, glob
-from scipy.stats import  iqr
 from pathlib import Path
 from datetime import datetime
 import warnings
@@ -13,9 +12,9 @@ from nilearn import image
 from nilearn.image import smooth_img
 from nilearn.maskers import NiftiMasker
 
-def tmean_img(ID=None,i_img=None,o_img=None,redo=False,verbose=False):
-        
-        '''
+
+def tmean_img(ID=None, i_img=None, o_img=None, redo=False, verbose=False):
+        """
         This function will help to calculate mean images across volumes (tmean).
         use fslmaths
         
@@ -28,32 +27,31 @@ def tmean_img(ID=None,i_img=None,o_img=None,redo=False,verbose=False):
         Outputs: 
         ----------
         Mean image inputfile_tmean.nii.gz
-        '''
-        if ID==None:
+        """
+        if ID is None:
             raise Warning("Please provide the ID of the participant, ex: _.stc(ID='A001')")
         
-        if i_img==None:
+        if i_img is None:
             raise Warning("Please provide filename of the input file")
       
         # Select the default output directory (input directory) 
-        if o_img==None:
-            o_img=i_img.split(".")[0] + "_tmean.nii.gz"
+        if o_img is None:
+            o_img = i_img.split(".")[0] + "_tmean.nii.gz"
 
         # calculate the tmean:
-        if not os.path.exists(o_img) or redo==True:
-            string='fslmaths ' + i_img+ ' -Tmean '+ o_img
-            os.system(string) # run the string as a command line
+        if not os.path.exists(o_img) or redo:
+            string = f"fslmaths {i_img} -Tmean {o_img}"
+            os.system(string)  # run the string as a command line
             
-        if verbose ==True:
+        if verbose:
             print("Done : check the outputs files in fsleyes by copy and past:")
             print("fsleyes " + o_img)
             
         return o_img
 
 
-def group_mean_img(IDs=None,i_dir=None,o_dir=None,prefix_tag='',suffix_tag="",tag='',remove_4d=True,redo=False,verbose=False):
-        
-        '''
+def group_mean_img(IDs=None, i_dir=None, o_dir=None, prefix_tag='', suffix_tag="", tag='', remove_4d=True, redo=False, verbose=False):
+        """
         This function will help to calculate mean images across volumes (tmean).
         use fslmaths
         
@@ -66,44 +64,42 @@ def group_mean_img(IDs=None,i_dir=None,o_dir=None,prefix_tag='',suffix_tag="",ta
         Outputs: 
         ----------
         Mean image inputfile_tmean.nii.gz
-        '''
-        if IDs==None:
+        """
+
+        if IDs is None:
             raise Warning("Please provide the IDs of the participants, ex: _.stc(ID=['A001','A002'])")
         
-        if i_dir==None:
+        if i_dir is None:
             raise Warning("Please provide directory of the input file")
       
         # Select the default output directory (input directory) 
-        if o_dir==None:
+        if o_dir is None:
             o_dir=os.path.dirname(i_dir)
         
         if not os.path.exists(o_dir):
             os.makedirs(o_dir)
 
-        o_img=o_dir + "n_" + str(len(IDs))+"_"+tag 
-        o_img_mean=o_img + "_mean.nii.gz"
-        o_img_std=o_img + "_std.nii.gz"
-        o_img_z=o_img + "_z.nii.gz"
+        o_img = o_dir + "n_" + str(len(IDs))+"_"+tag
+        o_img_mean = o_img + "_mean.nii.gz"
+        o_img_std = o_img + "_std.nii.gz"
+        o_img_z = o_img + "_z.nii.gz"
 
         ######## Merge indive files:
         file_4d=o_img_mean.split("mean")[0] +"4d.nii.gz"
 
-
         # Loop through each participant ID and construct the file path
-        input_files=[]
+        input_files = []
         for ID_nb, ID in enumerate(IDs):
-            indiv_dir=i_dir[ID_nb] if isinstance(i_dir, list) else i_dir
+            indiv_dir = i_dir[ID_nb] if isinstance(i_dir, list) else i_dir
             
             file_name = f'{prefix_tag}{ID}{suffix_tag}.nii.gz'  # Replace with your actual file naming convention
-            print(indiv_dir +'/'+ file_name)
-            file_path = glob.glob(indiv_dir +'/'+ file_name)[0]
+            print(os.path.join(indiv_dir, file_name))
+            file_path = glob.glob(os.path.join(indiv_dir, file_name))[0]
             
             if os.path.isfile(file_path):
                 input_files.append(file_path)
             else:
                 print(f"File not found: {file_path}")
-
-  
             
         ###### calculate the tmean:
         if not os.path.exists(o_img_mean) or redo==True:
@@ -126,8 +122,8 @@ def group_mean_img(IDs=None,i_dir=None,o_dir=None,prefix_tag='',suffix_tag="",ta
         return o_img_mean
 
 
-def unzip_file(i_file,o_folder=None,ext=".nii",zip_file=False, redo=False,verbose=False):
-        '''
+def unzip_file(i_file, o_folder=None, ext=".nii", zip_file=False, redo=False, verbose=False):
+        """
         unzip the file to match with SPM
         Attributes
         ----------
@@ -140,12 +136,12 @@ def unzip_file(i_file,o_folder=None,ext=".nii",zip_file=False, redo=False,verbos
         return
         ----------
         o_file: <filename>: file name of unziped or zipped files 
-        '''
+        """
         if o_folder is not None:
-            output_file=o_folder + os.path.basename(i_file).split('.')[0] + ext
+            output_file = os.path.join(o_folder, os.path.basename(i_file).split('.')[0] + ext)
             
         else:
-            output_file=i_file.split('.')[0] + ext
+            output_file = i_file.split('.')[0] + ext
             
         # Zip file
         if zip_file:
@@ -153,7 +149,7 @@ def unzip_file(i_file,o_folder=None,ext=".nii",zip_file=False, redo=False,verbos
                 if verbose:
                     print("Unzip is running")
                 string= 'gzip ' + i_file
-                os.environ(string)
+                os.system(string)
                 if o_folder:
                     os.rename(i_file.split('.')[0] + ext, output_file)
             else:
@@ -187,20 +183,18 @@ def unzip_file(i_file,o_folder=None,ext=".nii",zip_file=False, redo=False,verbos
 
 
 def standardize(i_img=None,o_folder=None,json_files=None,mask_img=None,tag="",redo=False,verbose=False):
-
-        '''
+        """
         unzip the file to match with SPM
         Attributes
         ----------
         i_img <filename>, mendatory, default: None: input filename
         o_folder <dirname> optional, default None : output directory (e.g: output_file='/mydir/')
-        json_file <str>: 
-        mask_img <filename> optional, default None, If provided, signal is only standardized from voxels inside the mask. 
+        json_file <str>:
+        mask_img <filename> optional, default None, If provided, signal is only standardized from voxels inside the mask.
         redo <Bolean>: to rerun the analysis put True (default: False)
+        """
         
-        '''
-        
-        if i_img==None:
+        if (i_img is None):
             raise ValueError("Please provide the input filename, ex: _.cleam_images(i_img='/mydir/sub-1_filename.nii.gz')")
      
         timeseries=nib.load(i_img).get_fdata() # extract Time series dats
@@ -216,17 +210,16 @@ def standardize(i_img=None,o_folder=None,json_files=None,mask_img=None,tag="",re
             signals /= std
 
         # save into filename
-        o_filename=i_img.split('.')[0] + tag + ".nii.gz"
-        json_file=o_filename.split('.')[0] + ".json"
+        o_filename = i_img.split('.')[0] + tag + ".nii.gz"
+        json_file = o_filename.split('.')[0] + ".json"
         if not os.path.exists(o_filename) or redo==True:
-            o_img=image.new_img_like(i_img, signals.T.reshape(timeseries.shape),copy_header=True)
+            o_img = image.new_img_like(i_img, signals.T.reshape(timeseries.shape),copy_header=True)
             o_img.to_filename(o_filename) #save image
 
             if mask_img:
-                string="fslmaths "+o_filename+" -mas " +mask_img +" "+ o_filename
+                string = f"fslmaths {o_filename} -mas {mask_img} o_filename"
                 os.system(string)
 
-            
             infos={"standardize":True,"mask":mask_img}
             with open(json_file, 'w') as f:
                 json.dump(infos, f) # save info
@@ -245,11 +238,11 @@ def compute_tsnr_map(fname_file, ofolder, redo, first_n_vols=None, smooth=False)
         str: Filename of the tSNR NIfTI file
     """
     if not os.path.exists(fname_file):
-        return
+        raise FileNotFoundError(f"Input file not found: {fname_file}")
 
-    fname_tsnr= os.path.join(ofolder, os.path.basename(fname_file).split(".")[0] + "_tSNR.nii.gz")
+    fname_tsnr = os.path.join(ofolder, os.path.basename(fname_file).split(".")[0] + "_tSNR.nii.gz")
     # compute tSNR *******************************************************************************
-    if not os.path.exists(fname_tsnr) or redo == True:
+    if not os.path.exists(fname_tsnr) or redo:
         if not os.path.exists(os.path.dirname(fname_tsnr)):
             os.makedirs(os.path.dirname(fname_tsnr))
         nii = nib.load(fname_file)
@@ -287,13 +280,13 @@ def extract_mean_within_mask(fname_file, fname_mask):
         tSNR_masked = masker_stc.fit_transform(fname_file)
     # Todo: does computing the mean exclude masked voxels
     # calculate the mean value
-    mean_tSNR_masked=np.mean(tSNR_masked)
+    mean_tSNR_masked = np.mean(tSNR_masked)
 
     return mean_tSNR_masked
 
 
 def tSNR(ID=None,i_img=None,o_dir=None,mask=None,warp_img=None,structure='spinalcord',redo=False):
-    '''
+    """
         This function calculate the tSNR within the brain or spinal cord
         
         Attributes:
@@ -304,14 +297,14 @@ def tSNR(ID=None,i_img=None,o_dir=None,mask=None,warp_img=None,structure='spinal
         inTemplate: put True to coregister the tSNR map into template space
         redo: put True to re-run the analysis on existing file (default=False)
     
-    '''
+    """
 
     img_tSNR = compute_tsnr_map(i_img, o_dir, redo)
 
     # extract value inside the mask
-    o_txt=o_dir + "sub-"+ ID +"/" +os.path.basename(i_img).split(".")[0] + "mean.txt" 
+    o_txt = os.path.join(o_dir, f"sub-{ID}", os.path.basename(i_img).split(".")[0] + "mean.txt")
     if os.path.exists(o_txt):
-        if redo==True:
+        if redo:
             os.remove(o_txt) 
     if not os.path.exists(o_txt):
         mean_tSNR_masked = extract_mean_within_mask(img_tSNR, mask)
@@ -385,7 +378,7 @@ def get_latest_dir(base_dir):
 
     # Pick the latest one
     latest_folder = max(dated, key=lambda x: x[1])[0]
-    return str(latest_folder) + "/"
+    return str(latest_folder)
 
 
 def print_participant_metrics(participants_tsv, IDs):

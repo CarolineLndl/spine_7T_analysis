@@ -26,7 +26,6 @@
 # Imports
 import sys, json, glob, os, re, shutil, argparse
 import pandas as pd
-from IPython.display import Image, display
 
 # get path of the parent location of this file, and go up one level
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -70,7 +69,7 @@ print("Redo steps: ", redo, flush=True)
 print("================================", flush=True)
 
 # Load participants info
-participants_tsv = pd.read_csv(os.path.join(path_code,'config', 'participants.tsv'), sep='\t',dtype={'participant_id': str})
+participants_tsv = pd.read_csv(os.path.join(path_code, 'config', 'participants.tsv'), sep='\t',dtype={'participant_id': str})
 acq_parameters = []
 
 new_IDs=[]
@@ -134,11 +133,15 @@ for ID_nb, ID in enumerate(IDs):
     #------------------------------------------------------------------
     #------ Vertebral labelling
     #------------------------------------------------------------------
+    # Manual fixing for participant 093 (the last vertebral level is too high and registration to PAM50 using >2 labels fails, see https://github.com/CarolineLndl/spine_7t_fmri_analysis/issues/101)
+    ID_using2labels = {"093": (3, 9)}
+
     disc_labels_files = preprocess_Sc.label_vertebrae(ID=ID,
                                                     i_img=raw_anat,
                                                     seg_img=seg_anat_sc_file,
                                                     c="t2",
                                                     auto=auto_vert_labels,
+                                                    labels_to_keep=ID_using2labels.get(ID),
                                                     redo=redo,
                                                     verbose=verbose)
 
