@@ -316,7 +316,12 @@ class Figures_main:
             ax_cor = fig.add_subplot(gs[0, i+2])
             template_cor = template_data[x_min:x_max, y_slice, z_min:z_max].T
             ax_cor.imshow(template_cor, cmap="gray", origin="lower", aspect="auto")
-            im_cor = ax_cor.imshow(cor_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
+
+            # if there are only nan or 0 values, skip plotting the statmap to avoid showing a blank colorbar
+            if np.nansum(cor_slice) == 0:
+                print(f"warning: no suprathreshold voxels found for {titles[i]} (y={y_slice} coronal slice), skipping statmap overlay")
+            else:
+               im_cor = ax_cor.imshow(cor_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
             ax_cor.text(0.5, 0.01, f"y={y_slice}", color="white", fontsize=5,
                         ha="center", va="bottom", transform=ax_cor.transAxes)
             ax_cor.axis("off")
@@ -333,6 +338,8 @@ class Figures_main:
             crop_data = statmap_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, :]
             if z_slices[i] is None:
                z_slice = np.argmax(np.nanmax(crop_data, axis=(0, 1)))
+               if np.nansum(cor_slice) == 0:
+                   z_slice=258
             else:
                 z_slice = z_slices[i]
 
@@ -352,7 +359,9 @@ class Figures_main:
             ax_axi.axis("off")
             ax_axi.text(0.5, 0.01, f"z={z_slice}", color="white", fontsize=5,
                         ha="center", va="bottom", transform=ax_axi.transAxes)
-            ax_cor.axhline(y=z_slice - z_min, color='white', linestyle='--', linewidth=0.8, alpha=0.7)
+            
+            if np.nansum(cor_slice) != 0:
+                ax_cor.axhline(y=z_slice - z_min, color='white', linestyle='--', linewidth=0.8, alpha=0.7)
 
             # orientation labels only on first map
             if i == 0:

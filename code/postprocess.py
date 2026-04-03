@@ -276,7 +276,7 @@ class GLM_main:
 
         return o_fname + ".nii.gz",  o_fname + "_s.nii.gz"
     
-    def run_second_level_glm(self,i_fnames=None,design_matrix=None,mask_fname=None,smoothing_fwhm=None,parametric=False,n_perm=10000,vox_thr=0.01,task_name=None,n_jobs=2,run_name=None,verbose=True,redo=False):
+    def run_second_level_glm(self,i_fnames=None,design_matrix=None,mask_fname=None,smoothing_fwhm=None,parametric=False,n_perm=10000,vox_thr=0.01,cluster_corr=0.01,task_name=None,n_jobs=2,run_name=None,verbose=True,redo=False):
 
         '''
         Run second-level GLM for a specific task.
@@ -320,7 +320,7 @@ class GLM_main:
             raise ValueError("Please provide the list of filenames of the input contrast images.")
         
         # --- Define directories  -----------------------------------------------------------
-        second_level_dir = self.second_level_dir.format(task_name) + "/"
+        second_level_dir = self.second_level_dir.format("glm") + f"/cluster_p{cluster_corr}/{task_name}/"
         os.makedirs(second_level_dir, exist_ok=True)
 
         # Load design matrix file if provided, otherwise create a default design matrix with an intercept only
@@ -367,8 +367,8 @@ class GLM_main:
                 #mask the t-map with the significant cluster in the logp_max_size map
                 logp_max_size_img = nib.load(stat_map_file+ 'logp_max_size.nii.gz')
                 logp_max_size_data = logp_max_size_img.get_fdata()
-                #threshold the logp_max_size map at p<0.05
-                logp_max_size_data_thresholded = logp_max_size_data > -np.log10(0.01)
+                #threshold the logp_max_size map at cluster_corr
+                logp_max_size_data_thresholded = logp_max_size_data > -np.log10(cluster_corr)
                 #mask the t-map with the thresholded logp_max_size map
                 t_img = nib.load(stat_map_file+ 't.nii.gz')
                 t_data = t_img.get_fdata()
