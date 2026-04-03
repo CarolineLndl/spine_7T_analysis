@@ -154,7 +154,7 @@ class GLM_main:
             design_mat = fmri_glm.design_matrices_[0]
             
             fig, ax1 = plt.subplots(1, 1, figsize=(6, 4), constrained_layout=True)
-            plot_design_matrix(design_mat, ax=ax1)
+            plot_design_matrix(design_mat, axes=ax1)
             ax1.set_title(f"Design Matrix: sub-{ID}, {task_name}", fontsize=12)
             plt.savefig(design_mat_file)
 

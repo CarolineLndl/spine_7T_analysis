@@ -3,7 +3,9 @@ scipy
 pandas
 matplotlib
 nibabel
-nilearn
+# See https://github.com/CarolineLndl/spine_7t_fmri_analysis/issues/115
+# nilearn.plotting.plot_design_matrix error because "ax" is not an option
+nilearn>=0.11
 joblib
 ipython
 pydicom
