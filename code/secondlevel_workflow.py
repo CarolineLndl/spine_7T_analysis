@@ -123,6 +123,33 @@ for acq_name in config["design_exp"]["acq_names"]:
                                   y_data=metric,redo=True)
 
 #------------------------------------------------------------------
+#------ Compute average FD
+#------------------------------------------------------------------
+os.makedirs(second_level_dir.format("FD"), exist_ok=True)
+fd_files=[]
+for acq_name in config["design_exp"]["acq_names"]:
+    i_fnames=[];run_names=[]
+    tag="task-motor" + "_acq-" + acq_name
+    
+    for ID in IDs:
+        # define the run name if multiple runs exist
+        raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
+        func_file = raw_func[0] # take only the first run
+        match = re.search(r"_?(run-\d+)", func_file)
+        run_name = match.group(1) if match else ""
+        run_names.append(run_name)
+    
+    output_file=second_level_dir.format("FD") + f"/n{len(IDs)}_{tag}_FD.csv"
+    fd_files.append(glm_ana.extract_FD(IDs=IDs,task_name=tag,run_name=run_names,output_file=output_file,redo=False))
+
+postprocess.pair_ttest(
+    csv_files=fd_files, 
+    value_col='mean_FD', 
+    acq_col='acq', 
+    task_filter=None, task_col=None, 
+    output_fname=output_file.split('.csv')[0]+"_stats.csv", redo=True)
+
+#------------------------------------------------------------------
 #------ Run second level analysis
 #------------------------------------------------------------------
 

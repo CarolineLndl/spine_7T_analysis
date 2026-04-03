@@ -418,7 +418,57 @@ class GLM_main:
             df_values.to_csv(o_fname + "_values.csv", index=False)
 
         return fname_metrics, fname_values
+    
+    def extract_FD(self,IDs=None,task_name=None,run_name=None,output_file=None,redo=False):
+        """Extract mean framewise displacement (FD) for each participant and save to a CSV file.
+        Parameters
+        ----------
+        IDs : list of str
+            List of participant IDs (e.g., ["A001", "A002"])
+        task_name : str
+            Task name (e.g., "motor_acq-shimBase+3mm")
+        run_name : str, optional
+            Run name (e.g., "run-1") (default is None, which means no run name will be added to the output filename)
+        output : str, optional
+            Output filename (default is None, which means the output filename will be automatically generated)
+        redo : bool, optional
+            If True, recompute the FD even if the output file already exists (default is False)
+        Returns
+        -------
+        str
+            Filename of the output CSV file containing mean FD for each participant
+        """
 
+        if IDs is None:
+            raise ValueError("Please provide the list of participant IDs (e.g., ['A001', 'A002']).")
+        
+        FD_values = {"IDs": [], "mean_FD": [],"acq":[]}
+        for i, ID in enumerate(IDs):
+            preprocess_dir = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), "func")
+            moco_param_file = glob.glob(os.path.join(preprocess_dir, f"{task_name}","sct_fmri_moco", f"moco_params*{run_name[i]}.txt"))[0]
+            params_data=pd.read_csv(moco_param_file, delimiter=',', header=None)
+
+            # calulate the mean FD from the moco_params file, which contains the FD for each volume
+            diff_XY = np.abs(np.diff(params_data[0])) # Calculate Framewise displacement (abs difference of displacement between each volumes)
+            mean_FD=np.mean(diff_XY)
+
+            FD_values["IDs"].append(ID)
+            FD_values["mean_FD"].append(mean_FD)
+            FD_values["acq"].append(task_name.split("acq-")[1].split("+")[0])
+        df_FD = pd.DataFrame(FD_values)
+
+        if output_file is None:
+            output_file = os.path.join(self.second_level_dir.format("FD"), f"n{len(IDs)}_mean_FD_{task_name}.csv")
+        
+        if not os.path.exists(output_file) or redo:
+            df_FD.to_csv(output_file, index=False)
+
+        mean_FD = df_FD["mean_FD"].mean()
+        std_FD = df_FD["mean_FD"].std()
+
+        print(f"Mean FD {np.round(mean_FD, 2)} ± {np.round(std_FD, 2)} for task {task_name}")
+        return output_file
+    
 class TSNR_main:
     # ------------------------------------------------------------------
     # ------ Compute tSNR
@@ -575,11 +625,11 @@ class TSNR_main:
                 ids_with_both = ids_with_both[ids_with_both].index
                 df_reduced = dfs[metric][~((dfs[metric]['IDs'].isin(ids_with_both)) & (dfs[metric]['task'] == 'motor'))]
                 df_reduced.to_csv(self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv", index=False)
-                self.pair_ttest(csv_file=self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv",value_col=metric,redo=self.redo)
+                self.pair_ttest(csv_file=[self.fname_metrics[metric].split(".csv")[0]+"_reduced.csv"], value_col=metric, redo=self.redo)
 
             if not os.path.exists(self.fname_metrics[metric]):
                 dfs[metric].to_csv(self.fname_metrics[metric], index=False)
-                self.pair_ttest(csv_file=self.fname_metrics[metric],value_col=metric,redo=self.redo)
+                self.pair_ttest(csv_file=[self.fname_metrics[metric]], value_col=metric, redo=self.redo)
 
 
     def _extract_baseline_and_slicewise_tsnr_from_csv(self):
@@ -709,57 +759,7 @@ class TSNR_main:
                     selected_file = f
         return selected_file
     
-    def pair_ttest(self, df=None, csv_file=None, output_fname=None,index='IDs', value_col='tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase',task_filter=None, task_col='task', redo=False):
-
-        if output_fname==None and csv_file:
-            output_fname=csv_file.split('.csv')[0] + "_stats.csv"
-
-        if not os.path.exists(output_fname) or redo:
-            if csv_file:
-                df = pd.read_csv(csv_file)
-
-            # Filter by task if requested
-            if task_filter:
-                df = df[df[task_col] == task_filter]
-
-            # Pivot to get one column per condition
-            df_pivot = df.pivot_table(index=index, columns=acq_col, values=value_col)
-            df_pivot = df_pivot.dropna(subset=[cond1, cond2])
-
-            # Paired t-test
-            t_stat, p_value = stats.ttest_rel(df_pivot[cond1], df_pivot[cond2])
-            degrees_of_freedom = len(df_pivot) - 1
-
-            # Significance stars
-            if p_value < 0.001:
-                stars = '***'
-            elif p_value < 0.01:
-                stars = '**'
-            elif p_value < 0.05:
-                stars = '*'
-            else:
-                stars = 'ns'
-
-            # Build results dataframe
-            results = pd.DataFrame([{
-                'cond1'         : cond1,
-                'cond2'         : cond2,
-                'task_filter'   : task_filter if task_filter else 'all',
-                'N_pairs'       : len(df_pivot),
-                f'mean_{cond1}'    : df_pivot[cond1].mean(),
-                f'std_{cond1}'     : df_pivot[cond1].std(),
-                f'mean_{cond2}'    : df_pivot[cond2].mean(),
-                f'std_{cond2}'     : df_pivot[cond2].std(),
-                't_stat'        : t_stat,
-                'df'            : degrees_of_freedom,
-                'p_value'       : p_value,
-                'significance'  : stars,
-            }])
-
-            results.to_csv(output_fname, index=False)
-            print(results.to_string(index=False))
-
-        return pd.read_csv(output_fname)
+    
 
     
 class EpiComparison:
@@ -1500,3 +1500,60 @@ def make_legend_arrow(legend, orig_handle,
                       width, height, fontsize):
     p = mpatches.FancyArrow(0, 0.5*height, width, 0, length_includes_head=True, head_width=0.75*height )
     return p
+
+def pair_ttest(df=None, csv_files=None, output_fname=None,index='IDs', value_col='tSNR', acq_col='acq', cond1='shimSlice', cond2='shimBase',task_filter=None, task_col='task', redo=False):
+
+        if output_fname==None and csv_file:
+            output_fname=csv_file.split('.csv')[0] + "_stats.csv"
+
+        if not os.path.exists(output_fname) or redo:
+            if csv_files:
+                if len(csv_files) > 1:
+                    df_list = [pd.read_csv(f) for f in csv_files]
+                    df = pd.concat(df_list, ignore_index=True) # contactenate all dataframes into one
+                else:
+                    df = pd.read_csv(csv_files)
+
+            # Filter by task if requested
+            if task_filter:
+                df = df[df[task_col] == task_filter]
+
+            # Pivot to get one column per condition
+            df_pivot = df.pivot_table(index=index, columns=acq_col, values=value_col)
+            df_pivot = df_pivot.dropna(subset=[cond1, cond2])
+
+            # Paired t-test
+            t_stat, p_value = stats.ttest_rel(df_pivot[cond1], df_pivot[cond2])
+            degrees_of_freedom = len(df_pivot) - 1
+
+            # Significance stars
+            if p_value < 0.001:
+                stars = '***'
+            elif p_value < 0.01:
+                stars = '**'
+            elif p_value < 0.05:
+                stars = '*'
+            else:
+                stars = 'ns'
+
+            # Build results dataframe
+            results = pd.DataFrame([{
+                'cond1'         : cond1,
+                'cond2'         : cond2,
+                'N_pairs'       : len(df_pivot),
+                f'mean_{cond1}'    : df_pivot[cond1].mean(),
+                f'std_{cond1}'     : df_pivot[cond1].std(),
+                f'mean_{cond2}'    : df_pivot[cond2].mean(),
+                f'std_{cond2}'     : df_pivot[cond2].std(),
+                't_stat'        : t_stat,
+                'df'            : degrees_of_freedom,
+                'p_value'       : p_value,
+                'significance'  : stars,
+            }])
+            if task_filter:
+                results['task_filter'] = task_filter if task_filter else 'all'
+
+            results.to_csv(output_fname, index=False)
+            print(results.to_string(index=False))
+
+        return pd.read_csv(output_fname)
