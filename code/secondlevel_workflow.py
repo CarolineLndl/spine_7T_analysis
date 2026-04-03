@@ -253,7 +253,8 @@ figures.combine_plots(output_fname=f"{output_fig}/n{len(IDs)}_combined_plots.png
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  start', flush=True)
 print("=========================================", flush=True)
-output_dir=second_level_dir.format("icc_shimSlice_run01_run02")
+output_dir=second_level_dir.format("icc") + "/shimSlice_run01_vs_run02"
+os.makedirs(output_dir, exist_ok=True)
 i_fnames_by_runs = []
 tag="task-motor_acq-shimSlice+3mm"
 IDs_2runs=[]
@@ -293,7 +294,8 @@ print("=========================================", flush=True)
 print("", flush=True)
 print(f'=== ICC between sliceShim aand sliceBase  start', flush=True)
 print("=========================================", flush=True)
-output_dir=second_level_dir.format("icc_shimBase_shimSlice")
+output_dir=second_level_dir.format("icc") + "/shimBase_vs_shimSlice"
+os.makedirs(output_dir, exist_ok=True)
 os.makedirs(output_dir, exist_ok=True)
 i_fnames_by_runs = []
 
