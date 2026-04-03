@@ -116,7 +116,34 @@ for acq_name in config["design_exp"]["acq_names"]:
                                   specify_y_label=y_label,
                                   x_data="acq", x_order=["shimBase","shimSlice"],
                                   indiv_values=True,
-                                  y_data=metric, redo=True)
+                                  y_data=metric, redo=redo)
+
+#------------------------------------------------------------------
+#------ Compute average FD
+#------------------------------------------------------------------
+os.makedirs(second_level_dir.format("FD"), exist_ok=True)
+fd_files=[]
+for acq_name in config["design_exp"]["acq_names"]:
+    i_fnames=[];run_names=[]
+    tag="task-motor" + "_acq-" + acq_name
+
+    for ID in IDs:
+        # define the run name if multiple runs exist
+        raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
+        func_file = raw_func[0] # take only the first run
+        match = re.search(r"_?(run-\d+)", func_file)
+        run_name = match.group(1) if match else ""
+        run_names.append(run_name)
+
+    output_file=second_level_dir.format("FD") + f"/n{len(IDs)}_{tag}_FD.csv"
+    fd_files.append(glm_ana.extract_FD(IDs=IDs,task_name=tag,run_name=run_names,output_file=output_file,redo=False))
+
+postprocess.pair_ttest(
+    csv_files=fd_files,
+    value_col='mean_FD',
+    acq_col='acq',
+    task_filter=None, task_col=None,
+    output_fname=output_file.split('.csv')[0]+"_stats.csv", redo=True)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
@@ -152,7 +179,8 @@ for task_name in ["motor"]:
             # find the corresponding first-level file
             i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])
 
-        z_map_file=glm_ana.run_second_level_glm(i_fnames=i_fnames,
+        for cluster_corr in [0.001,0.01]:
+            z_map_file=glm_ana.run_second_level_glm(i_fnames=i_fnames,
                                                             mask_fname=common_mask_fname,
                                                             task_name=tag,
                                                             run_name="",
@@ -162,9 +190,9 @@ for task_name in ["motor"]:
                                                             redo=redo,
                                                             verbose=verbose)
 
-        metrics_csv,values_csv=glm_ana.extract_metrics(i_fname=z_map_file,threshold=0)
-        metrics_csv_pair.append(metrics_csv)
-        values_csv_pair.append(values_csv)
+            metrics_csv,values_csv=glm_ana.extract_metrics(i_fname=z_map_file,threshold=0)
+            metrics_csv_pair.append(metrics_csv)
+            values_csv_pair.append(values_csv)
                                                 
         print("")
         print(f'=== Second level done for : {tag} ===', flush=True)
@@ -174,12 +202,15 @@ for task_name in ["motor"]:
 #------ Plot group level tSNR and GLM
 #------------------------------------------------------------------
 # select the second level files
-i_fnames_glm_pair = [];i_fnames_tSNR_pair=[]
+i_fnames_glm_pair = {};i_fnames_tSNR_pair=[]
 for task_name in config["design_exp"]["task_names"]:
-    for acq_name in config["design_exp"]["acq_names"]:
-        tag = "task-" + task_name + "_acq-" + acq_name
-        i_fnames_glm_pair.append(os.path.join(second_level_dir.format(tag), f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
-        i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"), f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
+    for cluster_corr in [0.001,0.01]:
+            i_fnames_glm_pair[cluster_corr]=[]
+            i_fnames_tSNR_pair=[]
+            for acq_name in config["design_exp"]["acq_names"]:
+                tag = "task-" + task_name + "_acq-" + acq_name
+                i_fnames_glm_pair[cluster_corr].append(os.path.join(second_level_dir.format("glm"),f"cluster_p{cluster_corr}",tag, f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
+                i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"), f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
 
 output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
@@ -193,8 +224,10 @@ dist_plot=figures.plot_dist(
     colors=["#ED263F","#ADA8A8"],
     output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_distr.png"))
 
-glm_plot=figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair,
-                                   output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_avg_map.png"),
+glm_plot={}
+for cluster_corr in [0.01,0.001]:
+    glm_plot[cluster_corr]=figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair[cluster_corr],
+                                   output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_{cluster_corr}_avg_map.png"),
                                    stat_min=2.3, 
                                    stat_max=6,
                                    cbar_label='t-value',
@@ -211,7 +244,7 @@ tsnr_plot=figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
 
 # --- Combine side by side ---
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_plots.png"),
-                      map_files=[tsnr_plot,glm_plot],
+                      map_files=[tsnr_plot,glm_plot[0.01]],
                       graph_files=[box_plot["tsnr"],box_plot["ssnr"],bar_plot,dist_plot],
                       figsize=(7.5, 4), redo=redo)
 
@@ -256,7 +289,7 @@ figures.plot_fmri_maps(i_fnames=[icc_maps],
                           stat_min=0.1,
                           stat_max=0.9,
                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
+                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
