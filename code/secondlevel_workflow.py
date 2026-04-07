@@ -52,10 +52,10 @@ if tasks != [""]:
 sys.path.append(os.path.join(path_code, "code")) # Change this line according to your directory
 import postprocess, preprocess, figures
 
-glm_ana=postprocess.GLM_main(config,IDs=IDs)
-preprocess_Sc=preprocess.Preprocess_Sc(config,IDs=IDs)
-tsnr_ana=postprocess.TSNR_main(config, IDs,redo)
-figures=figures.Figures_main(config, IDs=IDs)
+glm_ana = postprocess.GLM_main(config,IDs=IDs)
+preprocess_Sc = preprocess.Preprocess_Sc(config,IDs=IDs)
+tsnr_ana = postprocess.TSNR_main(config, IDs,redo)
+figures = figures.Figures_main(config, IDs=IDs)
 
 # initialize directories
 preprocessing_dir = os.path.join(config["raw_dir"], config["preprocess_dir"]["main_dir"])
@@ -72,23 +72,22 @@ mask = os.path.join(first_level_dir.format('glm',"").split("sub")[0], "common_ma
 #------ Compute average tSNR
 #------------------------------------------------------------------
 for acq_name in config["design_exp"]["acq_names"]:
-    tsnr_id_fname=[]
-    cord_seg_file=[]
-    warp_file=[]
+    tsnr_id_fname = []
+    cord_seg_file = []
+    warp_file = []
     for ID in IDs:
-        i_fnames_runs=[]
-        snr_path=first_level_dir.format("snr",ID)
+        i_fnames_runs = []
+        snr_path = first_level_dir.format("snr",ID)
         dirs = [d for d in os.listdir(snr_path) if os.path.isdir(os.path.join(snr_path, d))]
-        
 
-        #select rest folder if exists otherwise take motor folder
+        # Select rest folder if it exists otherwise take motor folder
         rest_dirs = [d for d in dirs if "rest" in d and acq_name in d]
         if len(rest_dirs) > 0:
             selected_dirs = rest_dirs
         else:
             selected_dirs = [d for d in dirs if acq_name in d]
 
-        task_name=selected_dirs[0].split("_")[0].split("-")[1]
+        task_name = selected_dirs[0].split("_")[0].split("-")[1]
         
         tsnr_id_fname.append(glob.glob(os.path.join(snr_path, selected_dirs[0], "*_moco_tSNR.nii.gz"))[0])
         cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])

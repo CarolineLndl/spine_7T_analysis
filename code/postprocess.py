@@ -479,6 +479,7 @@ class GLM_main:
         print(f"Mean FD {np.round(mean_FD, 2)} ± {np.round(std_FD, 2)} for task {task_name}")
         return output_file
 
+
 class TSNR_main:
     # ------------------------------------------------------------------
     # ------ Compute tSNR
@@ -696,21 +697,14 @@ class TSNR_main:
         nii_template = nib.load(fname_template)
         data_tsnr = np.zeros_like(nii_template.get_fdata(), dtype=float)
         data_count_id = None
-        
-        fname_tsnr_avg = os.path.join(self.path_tsnr_inTemplate, f"tsnr_n{str(len(tsnr_fnames))}_{acq_name}_avg_in_PAM50.nii.gz")
-        os.makedirs(os.path.dirname(fname_tsnr_avg),exist_ok=True)
 
-        # --- Load mask if provided ---
-        if fname_mask is not None:
-            nii_mask = nib.load(fname_mask)
-            mask_data = nib.as_closest_canonical(nii_mask).get_fdata().astype(bool)
-        else:
-            mask_data = None
+        fname_tsnr_avg = os.path.join(self.path_tsnr_inTemplate, f"tsnr_n{str(len(tsnr_fnames))}_{acq_name}_avg_in_PAM50.nii.gz")
+        os.makedirs(os.path.dirname(fname_tsnr_avg), exist_ok=True)
 
         if not os.path.exists(fname_tsnr_avg) or redo:
             for i,ID in enumerate(IDs):
-                tsnr_basename=tsnr_fnames[i].split("moco")[0]
-                fname_tsnr_in_template=glob.glob(tsnr_basename + "moco_tsnr_in_PAM50.nii.gz")[0]
+                tsnr_basename = os.path.join(os.path.dirname(tsnr_fnames[i]), os.path.basename(tsnr_fnames[i]).split("moco")[0])
+                fname_tsnr_in_template = glob.glob(tsnr_basename + "moco_tsnr_in_PAM50.nii.gz")[0]
 
                 nii_roi = count_roi_in_template(os.path.dirname(tsnr_fnames[i]),
                                                      ID, 
@@ -733,14 +727,14 @@ class TSNR_main:
             data_tsnr_avg = np.divide(data_tsnr, data_count_id, out=np.zeros_like(data_tsnr), where=data_count_id != 0)
 
             # --- Apply mask if provided ---
-            if mask_data is not None:
+            if fname_mask is not None:
+                nii_mask = nib.load(fname_mask)
+                mask_data = nib.as_closest_canonical(nii_mask).get_fdata().astype(bool)
                 if mask_data.shape != data_tsnr_avg.shape:
                     raise ValueError(f"Mask shape {mask_data.shape} does not match data shape {data_tsnr_avg.shape}")
                 data_tsnr_avg[~mask_data] = 0
             
-            nii_tsnr_avg = nib.Nifti1Image(data_tsnr_avg, affine=nii_tsnr.affine,
-                                                    header=nii_tsnr.header)
-                                                    
+            nii_tsnr_avg = nib.Nifti1Image(data_tsnr_avg, affine=nii_tsnr.affine, header=nii_tsnr.header)
             nib.save(nii_tsnr_avg, fname_tsnr_avg)
 
         return fname_tsnr_avg
