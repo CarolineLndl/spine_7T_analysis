@@ -157,24 +157,24 @@ print("")
 
 common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz").format("glm")
 
-for cluster_corr in [0.001,0.01]:
+for cluster_corr in [0.001, 0.01]:
     metrics_csv_pair=[];values_csv_pair=[]
     for task_name in ["motor"]:
         for acq_name in config["design_exp"]["acq_names"]:
             i_fnames=[]
-            tag="task-" + task_name + "_acq-" + acq_name
+            tag = "task-" + task_name + "_acq-" + acq_name
             os.makedirs(second_level_dir.format(tag), exist_ok=True)
             for ID in IDs:
-                raw_func=sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
-                func_file = raw_func[0]# take only the first run
+                raw_func = sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
+                func_file = raw_func[0]  # take only the first run
 
                 # extract run number if exists
                 match = re.search(r"_?(run-\d+)", func_file)
                 run_name = match.group(1) if match else ""
 
-                i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])# find the corresponding first-level file
+                i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])  # find the corresponding first-level file
 
-            z_map_file=glm_ana.run_second_level_glm(i_fnames=i_fnames,
+            z_map_file = glm_ana.run_second_level_glm(i_fnames=i_fnames,
                                                             mask_fname=common_mask_fname,
                                                             task_name=tag,
                                                             run_name="",
@@ -185,43 +185,46 @@ for cluster_corr in [0.001,0.01]:
                                                             redo=redo,
                                                             verbose=verbose)
 
-            metrics_csv,values_csv=glm_ana.extract_metrics(i_fname=z_map_file,threshold=0)
+            metrics_csv,values_csv = glm_ana.extract_metrics(i_fname=z_map_file,threshold=0)
             metrics_csv_pair.append(metrics_csv)
             values_csv_pair.append(values_csv)
                                                 
-        print("")
-        print(f'=== Second level done for : {tag} ===', flush=True)
-        print("=========================================", flush=True)
+            print("")
+            print(f'=== Second level done for : {tag}, cluster: {cluster_corr} ===', flush=True)
+            print("=========================================", flush=True)
 
 #------------------------------------------------------------------
 #------ Plot group level tSNR and GLM
 #------------------------------------------------------------------
 # select the second level files
-i_fnames_glm_pair = {};i_fnames_tSNR_pair=[]
-for task_name in config["design_exp"]["task_names"]:
-    for cluster_corr in [0.001,0.01]:
-            i_fnames_glm_pair[cluster_corr]=[]
-            i_fnames_tSNR_pair=[]
-            for acq_name in config["design_exp"]["acq_names"]:
-                tag = "task-" + task_name + "_acq-" + acq_name
-                i_fnames_glm_pair[cluster_corr].append(os.path.join(second_level_dir.format("glm"),f"cluster_p{cluster_corr}",tag, f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
-                i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"), f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
+# GLM:
+i_fnames_glm_pair = {}
+task_name = "motor"
+for cluster_corr in [0.001, 0.01]:
+    i_fnames_glm_pair[cluster_corr] = []
+    for acq_name in config["design_exp"]["acq_names"]:
+        tag = "task-" + task_name + "_acq-" + acq_name
+        i_fnames_glm_pair[cluster_corr].append(os.path.join(second_level_dir.format("glm"),f"cluster_p{cluster_corr}",tag, f"n{len(IDs)}_{tag}_t_clustercorrected.nii.gz"))
+# tsnr
+i_fnames_tSNR_pair=[]
+for acq_name in config["design_exp"]["acq_names"]:
+    i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"), f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
 
 output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
-bar_plot=figures.bar_plot(
+bar_plot = figures.bar_plot(
     csv_pair=metrics_csv_pair,
     output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_nb_vox.png"))
 
-dist_plot=figures.plot_dist(
+dist_plot = figures.plot_dist(
     csv_pair=[values_csv_pair[1],values_csv_pair[0]],
     maps_name=["shimSlice","shimBase"],
     colors=["#ED263F","#ADA8A8"],
     output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_distr.png"))
 
 glm_plot={}
-for cluster_corr in [0.01,0.001]:
-    glm_plot[cluster_corr]=figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair[cluster_corr],
+for cluster_corr in [0.01, 0.001]:
+    glm_plot[cluster_corr] = figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair[cluster_corr],
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_{cluster_corr}_avg_map.png"),
                                    stat_min=2.3, 
                                    stat_max=6,
@@ -229,7 +232,7 @@ for cluster_corr in [0.01,0.001]:
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
-tsnr_plot=figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
+tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_tsnr_avg_map.png"),
                                    stat_min=5, 
                                    stat_max=18,
@@ -295,8 +298,7 @@ print("=========================================", flush=True)
 print("", flush=True)
 print(f'=== ICC between sliceShim aand sliceBase  start', flush=True)
 print("=========================================", flush=True)
-output_dir=second_level_dir.format("icc") + "/shimBase_vs_shimSlice"
-os.makedirs(output_dir, exist_ok=True)
+output_dir = second_level_dir.format("icc") + "/shimBase_vs_shimSlice"
 os.makedirs(output_dir, exist_ok=True)
 i_fnames_by_runs = []
 
