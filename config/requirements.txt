@@ -15,4 +15,5 @@ pybids
 dcm2niix
 seaborn
 nipype
-pingouin
+# pingouin.intraclass_corr output dataframe column names changed in version 0.6.1, which would cause errors if < 0.6.1
+pingouin>=0.6.1

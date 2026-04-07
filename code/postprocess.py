@@ -43,7 +43,7 @@ class GLM_main:
     """
 
     def __init__(self, config, IDs=None,verbose=True):
-        if IDs==None:
+        if IDs is None:
             raise ValueError("Please provide the participant ID (e.g., _.stc(ID='A001')).")
         
         # Class attributes -------------------------------------------------------------------------------------
@@ -204,17 +204,17 @@ class GLM_main:
 
     def run_icc(self, IDs=None, i_fnames=None, o_dir=None, mask_file=None, threshold=0, fwhm=[1,1,1],redo=False):
         
-        if IDs==None:
+        if IDs is None:
                 raise ValueError('Please provide IDs labels (IDs=["sub-01","sub-02"])')
-        if i_fnames==None:
+        if i_fnames is None:
                 raise ValueError('Please provide filenames i_fnames=[["sub-01-run-01.nii.gz", "sub-01-run-02.nii.gz"],["sub-02-run-01.nii.gz", "sub-02-run-02.nii.gz"]]')
         
-        if o_dir==None:
-            o_dir=self.second_level_dir.format("icc_analysis")
-        os.makedirs(o_dir,exist_ok=True)
-        all_maps=[]
+        if o_dir is None:
+            o_dir = self.second_level_dir.format("icc_analysis")
+        os.makedirs(o_dir, exist_ok=True)
+        all_maps = []
 
-        o_fname=os.path.join(o_dir, 'group_voxelwise_ICC')
+        o_fname = os.path.join(o_dir, 'group_voxelwise_ICC')
         if not os.path.exists(o_fname + '.nii.gz') or redo:
             for i, ID in enumerate(IDs):
                 if len(i_fnames[i]) != 2:
@@ -253,7 +253,8 @@ class GLM_main:
             n_subjects, n_runs, n_voxels = all_maps_array.shape
             icc_map = np.zeros(n_voxels)
 
-            # --- Compute voxelwise ICC(3,1) ---
+            # --- Compute voxelwise ICC(C,1) ---
+            # Pingouin updated  the intraclass_corr function, the output df Type changed from "ICC3" to "ICC(C,1)". See https://github.com/raphaelvallat/pingouin/pull/501
             for v in range(n_voxels):
                 voxel_data = all_maps_array[:, :, v]  # subjects × runs
                 df = pd.DataFrame({
@@ -262,7 +263,7 @@ class GLM_main:
                     'value': voxel_data.ravel()
                 })
                 icc_result = pg.intraclass_corr(data=df, targets='ID', raters='run', ratings='value')
-                icc_map[v] = icc_result.loc[icc_result['Type'] == 'ICC3', 'ICC'].values[0]
+                icc_map[v] = icc_result.loc[icc_result['Type'] == 'ICC(C,1)', 'ICC'].values[0]
 
             # --- Save as NIfTI ---
             icc_nii = np.zeros(mask_resampled.shape)
@@ -328,7 +329,7 @@ class GLM_main:
         if design_matrix is None:
             design_matrix = pd.DataFrame([1] * len(i_fnames),columns=["intercept"])
 
-        if parametric ==True:
+        if parametric:
             stat_map_file = os.path.join(second_level_dir, f"n{len(i_fnames)}_{task_name}_intercept_z_map.nii.gz")
             if not os.path.exists(stat_map_file) or redo:
                 print(f"Computing parametric second-level analysis for task {task_name}.")
@@ -377,7 +378,6 @@ class GLM_main:
                 t_masked_img = nib.Nifti1Image(t_data_masked, t_img.affine, t_img.header)
                 t_masked_img.to_filename(stat_map_file+ 't_clustercorrected.nii.gz')
 
-        
         return stat_map_file+ 't_clustercorrected.nii.gz'
 
     def extract_metrics(self,i_fname=None,threshold=0,o_fname=None,redo=False):
