@@ -788,7 +788,7 @@ class Figures_main:
             ax.set_xlabel('')
             y_label=specify_y_label if specify_y_label else y_data
 
-            ax.set_ylabel(y_label, fontsize=8, fontname="Arial",fontweight='bold')
+            ax.set_ylabel(y_label, fontsize=10, fontname="Arial",fontweight='bold')
             ax.tick_params(axis='y', labelsize=7)
             
 
@@ -807,7 +807,7 @@ class Figures_main:
             
             ax.set_xticks(range(len(df[x_data_f].unique())))
             ax.set_xticklabels(x_order if x_order else df[x_data_f].unique(), 
-                   rotation=45, fontsize=8, fontweight='bold', fontname="Arial", ha='right')
+                   rotation=45, fontsize=10, fontweight='bold', fontname="Arial", ha='right')
             
             # Save the figure if requested
             plt.tight_layout()

@@ -115,7 +115,7 @@ for acq_name in config["design_exp"]["acq_names"]:
                                   specify_y_label=y_label,
                                   x_data="acq", x_order=["shimBase","shimSlice"],
                                   indiv_values=True,
-                                  y_data=metric, redo=redo)
+                                  y_data=metric, redo=True)
 
 #------------------------------------------------------------------
 #------ Compute average FD
@@ -213,13 +213,13 @@ output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], 
 
 bar_plot = figures.bar_plot(
     csv_pair=metrics_csv_pair,figsize=(2, 2.7),
-    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_nb_vox.png"),redo=True)
+    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_nb_vox.png"),redo=redo)
 
 dist_plot = figures.plot_dist(
     csv_pair=[values_csv_pair[1],values_csv_pair[0]],
     maps_name=["shimSlice","shimBase"],
     colors=["#ED263F","#ADA8A8"],figsize=(2, 2.7),
-    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_distr.png"),redo=True)
+    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_distr.png"),redo=redo)
 
 glm_plot={}
 for cluster_corr in [0.01, 0.001]:
@@ -229,7 +229,7 @@ for cluster_corr in [0.01, 0.001]:
                                    stat_max=6,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
 tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_tsnr_avg_map.png"),
@@ -237,12 +237,17 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    stat_max=18,
                                    cmap='turbo',
                                    cbar_label='tSNR',
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=True)
 
 # --- Combine side by side ---
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_task_plots.png"),
                       map_files=[glm_plot[0.01]],
                       graph_files=[bar_plot,dist_plot],
+                      figsize=(3.2, 3.5), redo=redo)
+
+figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
+                      map_files=[tsnr_plot],
+                      graph_files=[box_plot["tsnr"],box_plot["ssnr"]],
                       figsize=(3.2, 3.5), redo=True)
 
 ## Next steps:
