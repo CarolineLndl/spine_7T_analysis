@@ -212,14 +212,14 @@ for acq_name in config["design_exp"]["acq_names"]:
 output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
 bar_plot = figures.bar_plot(
-    csv_pair=metrics_csv_pair,
-    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_nb_vox.png"))
+    csv_pair=metrics_csv_pair,figsize=(2, 2.7),
+    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_nb_vox.png"),redo=True)
 
 dist_plot = figures.plot_dist(
     csv_pair=[values_csv_pair[1],values_csv_pair[0]],
     maps_name=["shimSlice","shimBase"],
-    colors=["#ED263F","#ADA8A8"],
-    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_distr.png"))
+    colors=["#ED263F","#ADA8A8"],figsize=(2, 2.7),
+    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_distr.png"),redo=True)
 
 glm_plot={}
 for cluster_corr in [0.01, 0.001]:
@@ -229,7 +229,7 @@ for cluster_corr in [0.01, 0.001]:
                                    stat_max=6,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
 
 tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_tsnr_avg_map.png"),
@@ -240,10 +240,10 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
 
 # --- Combine side by side ---
-figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_plots.png"),
-                      map_files=[tsnr_plot,glm_plot[0.01]],
-                      graph_files=[box_plot["tsnr"],box_plot["ssnr"],bar_plot,dist_plot],
-                      figsize=(7.5, 4), redo=redo)
+figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_task_plots.png"),
+                      map_files=[glm_plot[0.01]],
+                      graph_files=[bar_plot,dist_plot],
+                      figsize=(3.2, 3.5), redo=True)
 
 ## Next steps:
 # plot the three at the right side of the previous figure
