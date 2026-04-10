@@ -500,18 +500,21 @@ class TSNR_main:
         self.second_level_dir= os.path.join(self.config["raw_dir"], self.config["second_level"]["dir"])
         self.path_tsnr = os.path.join(self.first_level_dir.format("snr","").split("sub")[0])
         self.path_tsnr_inTemplate = os.path.join(self.second_level_dir.format("snr"))
+        self.fname_metrics = {
+            "ssnr": os.path.join(self.path_tsnr, "ssnr_metrics.csv"),
+            "tsnr": os.path.join(self.path_tsnr, "tsnr_metrics.csv")
+        }
 
-    def generate_tsnr_maps_and_csv(self,space="native",fname_mask=None,native_gm_mask=None):
+    def generate_tsnr_maps_and_csv(self, space="native", native_gm_mask=None):
         """
         tSNR extraction can be either be done in native or PAM50 space:
         space: str
             choose the option "native" or "PAM50"
-        fname_mask: str
-            define the path of the mask otherwise the cord will be automatically selected either in native or PAM50 space
         """
-        dfs={}
-        dfs["tsnr"] = pd.DataFrame(columns=["IDs", "task", "acq", "tsnr"])
-        dfs["ssnr"] = pd.DataFrame(columns=["IDs", "task", "acq", "ssnr"])
+        dfs= {
+            "tsnr": pd.DataFrame(columns=["IDs", "task", "acq", "tsnr"]),
+            "ssnr": pd.DataFrame(columns=["IDs", "task", "acq", "ssnr"])
+        }
 
         print("=== Compute tSNR map on longest moco neighbour run ===", flush=True)
         # Find the minimum number of volumes across all runs to standardize tSNR calculation
@@ -527,10 +530,12 @@ class TSNR_main:
                         min_vols_for_tsnr = n_vols
 
         print(f"Minimum number of volumes across all runs: {min_vols_for_tsnr}", flush=True)
-        # Minimum number of volumes across all runs: 30 (2026-01-28)
+        # Minimum number of volumes across all runs: 60 (2026-04-07)
+
         # Compute_tsnr
+        print(f"Compute tSNR for each participant", flush=True)
         for ID in self.IDs:
-            print(ID)
+            print(f"Participant: {ID}")
             for task in self.config["design_exp"]["task_names"]:
                 for acq_name in self.config["design_exp"]["acq_names"]:
                     tag = "task-" + task + "_acq-" + acq_name
@@ -539,18 +544,18 @@ class TSNR_main:
                     if selected_file is None:
                         continue
 
-                    selected_mean_file=selected_file.split('.')[0] + "_mean.nii.gz"
+                    selected_mean_file = selected_file.split('.')[0] + "_mean.nii.gz"
 
                     # Compute tSNR map in native space
                     path_tsnr_sub_folder = os.path.join(self.path_tsnr, f"sub-{ID}", tag)
                     fname_tsnr = compute_tsnr_map(selected_file, path_tsnr_sub_folder, self.redo, min_vols_for_tsnr)
 
-                    #seg file in native space
+                    # Segmentation file in native space
                     fname_mask = os.path.join(self.config["raw_dir"],self.config["preprocess_dir"]["main_dir"].format(ID),"func",tag,f"sub-{ID}_{tag}_bold_moco_mean_seg.nii.gz")
 
                     # Warp tSNR in PAM50 space
-                    fname_tsnr_in_template = fname_tsnr.replace("_bold_moco_tSNR.nii.gz",
-                                                                "_bold_moco_tsnr_in_PAM50.nii.gz")
+                    fname_tsnr_in_template = fname_tsnr.replace("tSNR.nii.gz",
+                                                                "tSNR_in_PAM50.nii.gz")
                     if not os.path.exists(fname_tsnr_in_template) or self.redo:
                         print("=== Warp tSNR map to PAM50 space ===", flush=True)
 
@@ -590,20 +595,18 @@ class TSNR_main:
                             os.system(cmd_bin)
 
                     # Extract metrics from native space
-                    self.fname_metrics={"ssnr": os.path.join(self.path_tsnr, "ssnr_metrics.csv"),
-                                             "tsnr": os.path.join(self.path_tsnr, "tsnr_metrics.csv"), }
                     if space=="native" and fname_tsnr is not None:
                         if native_gm_mask:
                             self.fname_metrics["tsnr"] = os.path.join(self.path_tsnr, "tsnr_ratio_metrics.csv")
-                            fname_mask=fname_gm_mask
+                            fname_mask = fname_gm_mask
                             tsnr_mean_gm = extract_mean_within_mask(fname_tsnr, fname_gm_mask)
                             tsnr_mean_wm = extract_mean_within_mask(fname_tsnr, fname_wm_mask)
-                            tsnr_mean=tsnr_mean_gm/tsnr_mean_wm
+                            tsnr_mean = tsnr_mean_gm / tsnr_mean_wm
                         else:
                             tsnr_mean = extract_mean_within_mask(fname_tsnr, fname_mask)
 
-                    # Extract metrics from native space
-                    elif space=='PAM50' and fname_tsnr_in_template is not None:
+                    # Extract metrics from PAM50 space
+                    elif space == 'PAM50' and fname_tsnr_in_template is not None:
                         self.fname_metrics["tsnr"] = os.path.join(self.path_tsnr, "tsnr_metrics_PAM50.csv")
                         if fname_mask is None:
                             fname_mask = os.path.join(
@@ -617,7 +620,7 @@ class TSNR_main:
                         tsnr_mean = extract_mean_within_mask(fname_tsnr_in_template, fname_mask)
 
                     # Extract sSNR
-                    ssnr = compute_SNR(selected_mean_file, fname_mask, self.redo)
+                    ssnr = compute_SNR(selected_mean_file, fname_mask)
 
                     for metric in ["tsnr", "ssnr"]:
                         values = tsnr_mean if metric=="tsnr" else ssnr
@@ -643,45 +646,7 @@ class TSNR_main:
                 dfs[metric].to_csv(self.fname_metrics[metric], index=False)
                 pair_ttest(csv_files=[self.fname_metrics[metric]], value_col=metric, redo=self.redo)
 
-
-    def _extract_baseline_and_slicewise_tsnr_from_csv(self):
-        name_baseline = [a for a in self.config["design_exp"]["acq_names"] if a.find("Base") != -1][0]
-        name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if a.find("Slice") != -1][0]
-        df_tsnr = pd.read_csv(self.fname_metrics['tsnr'])
-        list_baseline_tsnr = []
-        list_slicewise_tsnr = []
-        for ID in self.IDs:
-            df_sub = df_tsnr[df_tsnr["ID"] == int(ID)]
-            done = False
-            # Try rest task
-            if len(df_sub[df_sub["task"] == "rest"]) >= 2:
-                done = True
-                df_task = df_sub[df_sub["task"] == "rest"]
-                if len(df_task) != 2:
-                    raise RuntimeError(f"We don't have 2 tSNR metric for sub-{ID} task-rest")
-
-                tsnr_baseline = df_task[df_task["acq"] == name_baseline]["tsnr_mean"].values
-                tsnr_slicewise = df_task[df_task["acq"] == name_slicewise]["tsnr_mean"].values
-                list_baseline_tsnr.append(tsnr_baseline[0])
-                list_slicewise_tsnr.append(tsnr_slicewise[0])
-
-            # If rest task not found, use motor task
-            if not done:
-                # Todo: If no rest task, use the motor task, we could use the volumes at rest during the motor task
-                print(f"No rest task found for sub-{ID}, using motor task instead", flush=True)
-                df_task = df_sub[df_sub["task"] == "motor"]
-                if len(df_task) != 2:
-                    warnings.warn(f"We don't have 2 tSNR metric for sub-{ID} task-motor")
-                    continue
-
-                tsnr_baseline = df_task[df_task["acq"] == name_baseline]["tsnr_mean"].values
-                tsnr_slicewise = df_task[df_task["acq"] == name_slicewise]["tsnr_mean"].values
-                list_baseline_tsnr.append(tsnr_baseline[0])
-                list_slicewise_tsnr.append(tsnr_slicewise[0])
-
-        return list_baseline_tsnr, list_slicewise_tsnr
-
-    def generate_average_tsnr_in_pam50(self, IDs=None,acq_name=None,task_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=False):
+    def generate_average_tsnr_in_pam50(self, IDs, acq_name=None,task_name=None,tsnr_fnames=None,seg_fnames=None, warp_fnames=None,fname_mask=None, redo=False):
         
         if IDs is None:
             raise ValueError("Please provide a list of participant IDs (e.g., _.stc(IDs=['A001','A002'])).")
@@ -739,15 +704,15 @@ class TSNR_main:
 
         return fname_tsnr_avg
 
-    def find_moco_for_tsnr_calculation(self,ID, task, acq_name):
-        files = glob.glob(os.path.join(
+    def find_moco_for_tsnr_calculation(self, ID, task, acq_name):
+        files = sorted(glob.glob(os.path.join(
             self.config["raw_dir"],
             self.config["preprocess_dir"]["main_dir"].format(ID),
             "func",
             f"task-{task}_acq-{acq_name}",
             "sct_fmri_moco",
             f"sub-{ID}_task-{task}_acq-{acq_name}*_bold_moco.nii.gz"
-        ))
+        )))
         if len(files) == 0:
             return None
         elif len(files) == 1:

@@ -270,19 +270,18 @@ def extract_mean_within_mask(fname_file, fname_mask):
     fname_mask: Filename of the input 3D NIfTI file mask to compute tSNR metric within
 
     Returns:
-        float: Mean tSNR value within the mask
+        float: Mean value within the mask
     """
     # select the mask
     masker_stc = NiftiMasker(mask_img=fname_mask, smoothing_fwhm=None, standardize=False, detrend=False)
     # mask the image
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        tSNR_masked = masker_stc.fit_transform(fname_file)
-    # Todo: does computing the mean exclude masked voxels
+        file_masked = masker_stc.fit_transform(fname_file)
     # calculate the mean value
-    mean_tSNR_masked = np.mean(tSNR_masked)
+    mean_value = np.mean(file_masked)
 
-    return mean_tSNR_masked
+    return mean_value
 
 
 def tSNR(ID=None,i_img=None,o_dir=None,mask=None,warp_img=None,structure='spinalcord',redo=False):
@@ -314,8 +313,9 @@ def tSNR(ID=None,i_img=None,o_dir=None,mask=None,warp_img=None,structure='spinal
 
     return o_txt, img_tSNR
 
-def compute_SNR(i_file=None,mask_file=None,redo=False):
-    '''
+
+def compute_SNR(i_file, mask_file):
+    """
         This function calculate the SNR within the brain or spinal cord
         
         Attributes:
@@ -324,9 +324,8 @@ def compute_SNR(i_file=None,mask_file=None,redo=False):
         ID: participant ID
         i_file: 3d mean func image filename
         mask_file: 3d mask image filename
-        redo: put True to re-run the analysis on existing file (default=False)
     
-    '''
+    """
     if i_file is None:
         raise ValueError("Please provide the input filename, (i_file='/mydir/sub-1_mean.nii.gz')")
     
