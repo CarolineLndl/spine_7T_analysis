@@ -25,6 +25,7 @@ import matplotlib.patches as mpatches
 from matplotlib.patches import Patch, Arrow
 from matplotlib.legend_handler import HandlerPatch
 import matplotlib.gridspec as gridspec
+import matplotlib.animation as animation
 
 from utils import compute_tsnr_map, compute_SNR, extract_mean_within_mask
 #####################################################
@@ -765,7 +766,101 @@ class EpiComparison:
         self._create_fullcomp_figure(fname_avg_baseline, fname_avg_slicewise, show_avg=False)
         for ID in self.IDs:
             self._create_comp_figure(ID, fname_avg_baseline, fname_avg_slicewise, False)
-        # Todo: Create a gif that switches between baseline and slicewise
+            self._create_gif_comparison(ID, True)
+
+    def _create_gif_comparison(self, ID, redo):
+        show_slice_factor = 2
+        fname_gif = os.path.join(self.path_fig_epi_comparison, f"sub-{ID}_epi_comparison.gif")
+        if os.path.exists(fname_gif) or redo:
+            # Create figure that shows moco mean in native space between baseline and slicewise shim
+            name_baseline = [a for a in self.config["design_exp"]["acq_names"] if "Base" in a][0]
+            name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if "Slice" in a][0]
+
+            task = self._get_task_of_moco_mean_same_vols(ID, name_baseline)
+            # Paths for baseline and slicewise shim images
+            fname_baseline = self._select_moco_mean_same_vols(ID, name_baseline)
+            fname_seg_baseline, _, fname_warp_from_pam50_to_func_baseline = get_fname_seg_and_warps(ID, task,
+                                                                                                    name_baseline,
+                                                                                                    self.config)
+            fname_slicewise = self._select_moco_mean_same_vols(ID, name_slicewise)
+            fname_seg_slicewise, _, fname_warp_from_pam50_to_func_slicewise = get_fname_seg_and_warps(ID, task,
+                                                                                                      name_slicewise,
+                                                                                                      self.config)
+
+            # Load images and masks
+            img_baseline = nib.load(fname_baseline).get_fdata()
+            img_slicewise = nib.load(fname_slicewise).get_fdata()
+            mask_baseline = nib.load(fname_seg_baseline).get_fdata()
+            mask_slicewise = nib.load(fname_seg_slicewise).get_fdata()
+
+            n_slices = img_baseline.shape[2]
+
+            fig = plt.figure(figsize=(round(n_slices / show_slice_factor + 0.1 / 2) / 2, 0.5))
+            gs_main = gridspec.GridSpec(1, 1, figure=fig, hspace=0, wspace=0)
+
+            title_fontsize = 5
+            # Python rounds 12.5 to 12 instead of 13, so we add 0.1 to make sure we have enough space for all slices
+            gs = gs_main[0].subgridspec(1, round(n_slices / show_slice_factor + 0.1), hspace=0, wspace=0)
+            # gs_slicewise = gs_main[1].subgridspec(round(n_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
+            axs = gs.subplots()
+            # axs_slicewise = gs_slicewise.subplots()
+            # axs_slicewise[0].set_title(f"ID {ID} slice-wise\nf0xyz shim", fontsize=title_fontsize)
+
+            bound_lr = 16  # left-right bound
+            bound_ud = 16  # up-down bound
+            vmin, vmax = calc_vmin_vmax(mask_baseline, mask_slicewise, img_baseline, img_slicewise, False,
+                                        avg_baseline=None, avg_slicewise=None, show_slice_factor=2,
+                                        bound_lr=bound_lr, bound_ud=bound_ud)
+            delta = vmax - vmin
+            # vmin = vmin + 0.1 * delta
+            vmax = vmax - 0.2 * delta
+
+            ims = []
+            for idx, slice_idx in enumerate(range(n_slices - 1, -1, -show_slice_factor)):
+                com_baseline = center_of_mass(mask_baseline[:, :, slice_idx])
+
+                # Define cropping bounds
+                crop_x_baseline = slice(max(0, int(com_baseline[0] - bound_lr)),
+                                        min(mask_baseline.shape[0], int(com_baseline[0] + bound_lr)))
+                crop_y_baseline = slice(max(0, int(com_baseline[1] - bound_ud)),
+                                        min(mask_baseline.shape[1], int(com_baseline[1] + bound_ud)))
+
+                # Crop the images
+                cropped_baseline = img_baseline[crop_x_baseline, crop_y_baseline, slice_idx]
+
+                ims.append(axs[idx].imshow(cropped_baseline.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax, animated=True))
+                axs[idx].axis('off')
+                axs[idx].set_aspect('equal', adjustable='box')
+
+                template_slice_idx = self.func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1],
+                                                                       fname_warp_from_pam50_to_func_baseline,
+                                                                       fname_baseline, ID, task, name_baseline)
+                spinal_level = template_slice_to_spinal_level(template_slice_idx)[1]
+                axs[idx].text(0.15, 0.85, spinal_level, color='white', fontsize=4, fontweight='bold',
+                                       ha='center', va='center', transform=axs[idx].transAxes)
+
+            def update(i):
+                for idx, slice_idx in enumerate(range(n_slices - 1, -1, -show_slice_factor)):
+                    if i % 2 == 1:
+                        com_slicewise = center_of_mass(mask_slicewise[:, :, slice_idx])
+                        crop_x_slicewise = slice(max(0, int(com_slicewise[0] - bound_lr)),
+                                                 min(mask_slicewise.shape[0], int(com_slicewise[0] + bound_lr)))
+                        crop_y_slicewise = slice(max(0, int(com_slicewise[1] - bound_ud)),
+                                                 min(mask_slicewise.shape[1], int(com_slicewise[1] + bound_ud)))
+                        cropped_slicewise = img_slicewise[crop_x_slicewise, crop_y_slicewise, slice_idx]
+                        ims[idx].set_data(cropped_slicewise.T)
+                    else:
+                        com_baseline = center_of_mass(mask_baseline[:, :, slice_idx])
+                        crop_x_baseline = slice(max(0, int(com_baseline[0] - bound_lr)),
+                                                min(mask_baseline.shape[0], int(com_baseline[0] + bound_lr)))
+                        crop_y_baseline = slice(max(0, int(com_baseline[1] - bound_ud)),
+                                                min(mask_baseline.shape[1], int(com_baseline[1] + bound_ud)))
+                        cropped_baseline = img_baseline[crop_x_baseline, crop_y_baseline, slice_idx]
+                        ims[idx].set_data(cropped_baseline.T)
+
+                return ims
+            ani = animation.FuncAnimation(fig, update, frames=2, interval=2000, blit=False, repeat=True)
+            ani.save(fname_gif, dpi=2000, writer="ffmpeg")
 
     def _select_moco_mean_same_vols(self, ID, acq_name):
         fname_moco_mean = os.path.join(self.path_fig_data, f"sub-{ID}", f"sub-{ID}_task-rest_acq-{acq_name}_bold_moco_mean_samevols.nii.gz")
