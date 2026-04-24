@@ -766,12 +766,12 @@ class EpiComparison:
         self._create_fullcomp_figure(fname_avg_baseline, fname_avg_slicewise, show_avg=False)
         for ID in self.IDs:
             self._create_comp_figure(ID, fname_avg_baseline, fname_avg_slicewise, False)
-            self._create_gif_comparison(ID, True)
+            self._create_gif_comparison(ID, redo=self.redo)
 
     def _create_gif_comparison(self, ID, redo):
         show_slice_factor = 2
         fname_gif = os.path.join(self.path_fig_epi_comparison, f"sub-{ID}_epi_comparison.gif")
-        if os.path.exists(fname_gif) or redo:
+        if not os.path.exists(fname_gif) or redo:
             # Create figure that shows moco mean in native space between baseline and slicewise shim
             name_baseline = [a for a in self.config["design_exp"]["acq_names"] if "Base" in a][0]
             name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if "Slice" in a][0]
@@ -933,7 +933,7 @@ class EpiComparison:
 
         self.fname_fig_epi_comparison = os.path.join(self.path_fig_epi_comparison, "epi_comparison.png")
         
-        if os.path.exists(self.fname_fig_epi_comparison) or self.redo:
+        if not os.path.exists(self.fname_fig_epi_comparison) or self.redo:
             highlight = {
                 # '090': {1: 'sigtot', 3: 'sigtot', 7: 'sigtot', 9: 'geo'},
                 '094': {1: 'sigtot', 5: 'geo', 27: 'sigtot'},
@@ -942,7 +942,7 @@ class EpiComparison:
                 '101': {1: 'geo', 5: 'sigtot', 27: 'sigvert'},
                 '106': {1: 'sigtot', 11: 'geo', 15: 'geo', 19: 'geo'}}
 
-            color = {'sigtot': '#2ca02c', 'sigvert': '#d62728', 'geo': '#9467bd'}
+            color = {'sigtot': '#2ca02c', 'sigvert': '#26ede3', 'geo': '#b996d9'}
 
             name_baseline = [a for a in self.config["design_exp"]["acq_names"] if "Base" in a][0]
             name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if "Slice" in a][0]
@@ -974,11 +974,11 @@ class EpiComparison:
                 width_ratios.extend([1, 1])
                 avg_baseline = nib.load(fname_avg_baseline).get_fdata()
                 avg_slicewise = nib.load(fname_avg_slicewise).get_fdata()
-                fig = plt.figure(figsize=(2.1 * (n_part + 1), n_max_slices // show_slice_factor))
+                fig = plt.figure(figsize=(2.15 * (n_part + 1), n_max_slices // show_slice_factor))
                 gs_main = gridspec.GridSpec(2, ((n_part + 1) * 2) + n_part, figure=fig, hspace=0, wspace=0, width_ratios=width_ratios, height_ratios=[0.001,1])
             else:
                 width_ratios = width_ratios[:-1]  # remove the last 0.1
-                fig = plt.figure(figsize=(2.1 * n_part, n_max_slices // show_slice_factor))
+                fig = plt.figure(figsize=(2.15 * n_part, n_max_slices // show_slice_factor))
                 gs_main = gridspec.GridSpec(2, (n_part * 2) + (n_part -1), figure=fig, hspace=0, wspace=0, width_ratios=width_ratios, height_ratios=[0.001,1])
 
             print("IDs to show in the figure:", ids_to_show, flush=True)
@@ -1010,7 +1010,7 @@ class EpiComparison:
 
                 delta = vmax - vmin
                 # vmin = vmin + 0.1 * delta
-                vmax = vmax - 0.1 * delta
+                vmax = vmax - 0.2 * delta
 
                 gs_baseline = gs_main[1, i_id * 3].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
                 gs_slicewise = gs_main[1, i_id * 3 + 1].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
@@ -1042,8 +1042,8 @@ class EpiComparison:
                     axs_slicewise[idx].imshow(cropped_slicewise.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
                     axs_slicewise[idx].set_aspect('equal', adjustable='box')
 
-                    color_baseline = '#1f77b4'
-                    color_slicewise = '#ff7f0e'
+                    color_baseline = '#ADA8A8'
+                    color_slicewise = '#ED263F'
                     if idx == len(range_slices) - 1 and i_id == 0:
                         legend_fontsize = 10
                         legend_elements = [Patch(facecolor='white', edgecolor=color_baseline, label='shimBase',
@@ -1058,11 +1058,11 @@ class EpiComparison:
                         axs_slicewise[idx].legend(handles=legend_elements, loc=(1.2, -1), fontsize=legend_fontsize, handler_map={mpatches.Arrow : HandlerPatch(patch_func=make_legend_arrow)})
 
                     # Color the borders of the baseline images in yellow to differentiate them from the slicewise images
-                    spine_thickness = 1.25
+                    spine_thickness = 2.5
                     axs_baseline[idx].tick_params(axis='both', which='both', length=0, labelbottom=False, labelleft=False, bottom=False, left=False)
                     # Example: Change spine border thickness
                     for spine in axs_baseline[idx].spines.values():
-                        spine.set_linewidth(spine_thickness)  # Set the border thickness to 2
+                        spine.set_linewidth(spine_thickness)  # Set the border thickness
                     axs_baseline[idx].spines['left'].set_edgecolor(color_baseline)
                     axs_baseline[idx].spines['right'].set_edgecolor(color_baseline)
                     if idx == 0:
@@ -1174,7 +1174,7 @@ class EpiComparison:
     def _create_comp_figure(self, ID, fname_avg_baseline, fname_avg_slicewise, show_avg=False, show_slice_factor=2):
         # Todo: Subject 93 has unknown slice ID, issue #101
 
-        if os.path.exists(os.path.join(self.path_fig_epi_comparison, f"sub-{ID}_epi_comparison.png")) or self.redo:
+        if not os.path.exists(os.path.join(self.path_fig_epi_comparison, f"sub-{ID}_epi_comparison.png")) or self.redo:
             # Create figure that shows moco mean in native space between baseline and slicewise shim
             name_baseline = [a for a in self.config["design_exp"]["acq_names"] if "Base" in a][0]
             name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if "Slice" in a][0]
