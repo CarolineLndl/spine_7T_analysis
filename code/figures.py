@@ -616,7 +616,7 @@ class Figures_main:
         
         return output_fname
 
-    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, redo=False):
+    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, show_pvalues_if_sig=True, redo=False):
         """
         Create matrix of correlation boxplots with matching box outline and whisker colors.
         """
@@ -771,6 +771,12 @@ class Figures_main:
                     x2 = cats.index(stats_df['cond2'].values[0])
 
                 stars = stats_df['significance'].values[0]
+                if stars != 'ns' and show_pvalues_if_sig:
+                    pvalue = stats_df['p_value'].values[0]
+                    # sig_annotation = f"{stars}\n(p={pvalue:.3f})"
+                    sig_annotation = f"p={pvalue:.3f}"
+                else:
+                    sig_annotation = stars
 
                 # Draw bracket
                 y_bracket = ymax * 0.97  # just below the top
@@ -781,7 +787,7 @@ class Figures_main:
                         [y_tip, y_bracket, y_bracket, y_tip],
                         color=bracket_color, linewidth=1)
                 ax.text((x1 + x2) / 2, y_bracket + (ymax - ymin) * 0.01,
-                        stars,fontname="Arial",
+                        sig_annotation,fontname="Arial",
                         ha='center', va='bottom',
                         fontsize=7, color=bracket_color)
             
