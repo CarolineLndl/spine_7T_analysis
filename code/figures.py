@@ -605,7 +605,16 @@ class Figures_main:
             ax.set_ylabel("# significant voxels", fontsize=12, fontweight='bold', fontname="Arial")
             ax.tick_params(axis='both', labelsize=7)
 
-            ax.legend(fontsize=8.5, frameon=False, loc='upper right')
+            # Get current handles and labels
+            handles, labels = ax.get_legend_handles_labels()
+            if len(labels) == 2 and "shimBase" in labels and "shimSlice" in labels:
+                # Make sure the order is shimBase, shimSlice
+                handles = [handles[labels.index("shimBase")], handles[labels.index("shimSlice")]]
+                labels = ["shimBase", "shimSlice"]
+                ax.legend(handles, labels, fontsize=8.5, frameon=False, loc='upper right')
+            else:
+                ax.legend(fontsize=8.5, frameon=False, loc='upper right')
+
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
 
