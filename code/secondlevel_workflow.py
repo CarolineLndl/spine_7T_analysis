@@ -162,7 +162,6 @@ for cluster_corr in [0.001, 0.01]:
         for acq_name in config["design_exp"]["acq_names"]:
             i_fnames=[]
             tag = "task-" + task_name + "_acq-" + acq_name
-            os.makedirs(second_level_dir.format(tag), exist_ok=True)
             for ID in IDs:
                 raw_func = sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
                 func_file = raw_func[0]  # take only the first run
