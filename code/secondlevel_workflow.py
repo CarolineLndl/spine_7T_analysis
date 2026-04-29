@@ -89,7 +89,7 @@ for acq_name in config["design_exp"]["acq_names"]:
 
         task_name = selected_dirs[0].split("_")[0].split("-")[1]
         
-        tsnr_id_fname.append(glob.glob(os.path.join(snr_path, selected_dirs[0], "*_moco_tSNR.nii.gz"))[0])
+        tsnr_id_fname.append(glob.glob(os.path.join(snr_path, selected_dirs[0], "*_moco_tsnr.nii.gz"))[0])
         cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
         warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
 

@@ -555,8 +555,8 @@ class TSNR_main:
                     fname_mask = os.path.join(self.config["raw_dir"],self.config["preprocess_dir"]["main_dir"].format(ID),"func",tag,f"sub-{ID}_{tag}_bold_moco_mean_seg.nii.gz")
 
                     # Warp tSNR in PAM50 space
-                    fname_tsnr_in_template = fname_tsnr.replace("tSNR.nii.gz",
-                                                                "tSNR_in_PAM50.nii.gz")
+                    fname_tsnr_in_template = fname_tsnr.replace("tsnr.nii.gz",
+                                                                "tsnr_in_PAM50.nii.gz")
                     if not os.path.exists(fname_tsnr_in_template) or self.redo:
                         print("=== Warp tSNR map to PAM50 space ===", flush=True)
 
@@ -576,8 +576,8 @@ class TSNR_main:
 
                     if native_gm_mask:
                         mask_PAM50=os.path.join(self.config["code_dir"], "template",self.config["PAM50_gm"])
-                        fname_gm_mask = fname_tsnr.split("tSNR")[0] + "gm.nii.gz"
-                        fname_wm_mask = fname_tsnr.split("tSNR")[0] + "wm.nii.gz"
+                        fname_gm_mask = fname_tsnr.split("tsnr")[0] + "gm.nii.gz"
+                        fname_wm_mask = fname_tsnr.split("tsnr")[0] + "wm.nii.gz"
                         fname_warp_from_template_to_func = os.path.join(
                             self.config["raw_dir"],
                             self.config["preprocess_dir"]["main_dir"].format(ID),
