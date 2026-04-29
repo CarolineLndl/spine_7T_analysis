@@ -240,7 +240,7 @@ def compute_tsnr_map(fname_file, ofolder, redo, first_n_vols=None, smooth=False)
     if not os.path.exists(fname_file):
         raise FileNotFoundError(f"Input file not found: {fname_file}")
 
-    fname_tsnr = os.path.join(ofolder, os.path.basename(fname_file).split(".")[0] + "_tSNR.nii.gz")
+    fname_tsnr = os.path.join(ofolder, os.path.basename(fname_file).split(".")[0] + "_tsnr.nii.gz")
     # compute tSNR *******************************************************************************
     if not os.path.exists(fname_tsnr) or redo:
         if not os.path.exists(os.path.dirname(fname_tsnr)):
