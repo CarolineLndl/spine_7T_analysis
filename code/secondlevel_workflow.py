@@ -66,7 +66,7 @@ fig_task_dir = os.path.join(main_fig_dir, "task")
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 second_level_dir = os.path.join(config["raw_dir"], config["second_level"]["dir"])
 
-mask = os.path.join(first_level_dir.format('glm',"").split("sub")[0], "common_mask_PAM50.nii.gz")
+mask = os.path.join(first_level_dir.format('glm',"").split("sub")[0], "PAM50_cord_cropped.nii.gz")
 
 #------------------------------------------------------------------
 #------ Compute average tSNR
@@ -154,7 +154,7 @@ print("Number of Participant included : ", len(IDs), flush=True)
 print("===================================", flush=True)
 print("")
 
-common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz").format("glm")
+common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz").format("glm")
 
 for cluster_corr in [0.001, 0.01]:
     metrics_csv_pair=[];values_csv_pair=[]
