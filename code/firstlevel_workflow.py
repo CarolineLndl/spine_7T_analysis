@@ -211,9 +211,8 @@ for ID_nb, ID in enumerate(IDs):
 #------------------------------------------------------------------
 glm_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"].format("glm",""))
 common_mask_fname = os.path.join(glm_dir.split("sub")[0], "common_mask_PAM50.nii.gz")
-cropped_PAM50_fname = os.path.join(glm_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz")
 
-if not os.path.exists(cropped_PAM50_fname) or redo:
+if not os.path.exists(common_mask_fname) or redo:
     norm_mask_data = [nib.as_closest_canonical(nib.load(f)).get_fdata() for f in norm_mask]
     n_files = len(norm_mask_data)
 
@@ -230,11 +229,6 @@ if not os.path.exists(cropped_PAM50_fname) or redo:
     z_min, z_max = z_indices[[0, -1]]
     z_size = z_max - z_min + 1
 
-    #Crop the PAM50 template to the common mask z-slices
-    
-    pam50_fname = os.path.join(path_code, "template", config["PAM50_cord"])
-    cmd = f"fslroi {pam50_fname} {cropped_PAM50_fname} 0 -1 0 -1 {z_min} {z_size}"
-    os.system(cmd)
 
 #------------------------------------------------------------------
 #------ III.  Plot first level results: shimBase vs. shimSlice

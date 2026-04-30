@@ -66,7 +66,7 @@ fig_task_dir = os.path.join(main_fig_dir, "task")
 first_level_dir = os.path.join(config["raw_dir"], config["first_level"]["dir"])
 second_level_dir = os.path.join(config["raw_dir"], config["second_level"]["dir"])
 
-mask = os.path.join(first_level_dir.format('glm',"").split("sub")[0], "PAM50_cord_cropped.nii.gz")
+mask = os.path.join(first_level_dir.format('glm',"").split("sub")[0], "common_mask_PAM50.nii.gz")
 
 #------------------------------------------------------------------
 #------ Compute average tSNR
@@ -154,9 +154,9 @@ print("Number of Participant included : ", len(IDs), flush=True)
 print("===================================", flush=True)
 print("")
 
-common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "PAM50_cord_cropped.nii.gz").format("glm")
+common_mask_fname = os.path.join(first_level_dir.split("sub")[0], "common_mask_PAM50.nii.gz").format("glm")
 
-for cluster_corr in [0.001, 0.01]:
+for cluster_corr in [0.001,0.01]:
     metrics_csv_pair=[];values_csv_pair=[]
     for task_name in ["motor"]:
         for acq_name in config["design_exp"]["acq_names"]:
@@ -171,7 +171,7 @@ for cluster_corr in [0.001, 0.01]:
                 run_name = match.group(1) if match else ""
 
                 i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])  # find the corresponding first-level file
-
+            
             z_map_file = glm_ana.run_second_level_glm(i_fnames=i_fnames,
                                                             mask_fname=common_mask_fname,
                                                             task_name=tag,
