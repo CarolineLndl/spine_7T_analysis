@@ -324,8 +324,8 @@ class Figures_main:
                 stat_max=stat_max,
                 cmap=cmap,
                 label=cbar_label,
-                left=0.05 if n_maps == 2 else 0.11 ,
-                bottom=0.05, width=0.04, height=0.15
+                left=0.4 if n_maps == 2 else 0.11 ,
+                bottom=0.2, width=0.35, height=0.02
             )
 
             # -- Spinal levels
@@ -407,7 +407,7 @@ class Figures_main:
         return ax_levels, ax_levels_txt
 
     def plot_colorbar(self, fig, stat_min, stat_max, cmap='autumn', 
-                  left=0.03, bottom=0.05, width=0.02, height=0.15,
+                  left=0.03, bottom=0.05, width=0.15, height=0.04,
                   label='t-value', fontsize=7.5):
         """
         Plot a shared colorbar on a figure.
@@ -444,13 +444,14 @@ class Figures_main:
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
 
-        cbar = fig.colorbar(sm, cax=cbar_ax)
-        cbar.set_label(label, fontsize=fontsize, labelpad=1.5, fontweight='bold', fontname="Arial")
-        cbar.ax.set_yticks([])
-        cbar.ax.text(1.5, 1.1, f"{stat_max:.1f}", fontsize=fontsize, va='center', ha='right',
+        cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
+        cbar.set_label(label, fontsize=fontsize, labelpad=3, fontweight='bold', fontname="Arial")
+
+        cbar.ax.text(1.4, 0.3, f"{stat_max:.1f}", fontsize=fontsize, va='center', ha='right',
                     color='black', transform=cbar.ax.transAxes)
-        cbar.ax.text(1.5, -0.12, f"{stat_min:.1f}", fontsize=fontsize, va='center', ha='right',
+        cbar.ax.text(-0.1, 0.3, f"{stat_min:.1f}", fontsize=fontsize, va='center', ha='right',
                     color='black', transform=cbar.ax.transAxes)
+        cbar.ax.set_xticks([])
         cbar.ax.set_frame_on(False)
 
         return cbar
