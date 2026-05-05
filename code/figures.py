@@ -312,51 +312,11 @@ class Figures_main:
                 ax_cor.axis("off")
                 ax_cor.set_title(titles[i], color="black", fontweight='bold', fontsize=9, fontname="Arial")
 
-                # --- Axial slice ---
-                crop_x = 30
-                crop_y = 30
-                x0 = statmap_data.shape[0] // 2
-                y0 = statmap_data.shape[1] // 2
-                x_min_axi, x_max_axi = x0 - crop_x, x0 + crop_x
-                y_min_axi, y_max_axi = y0 - crop_y, y0 + crop_y
-
-                crop_data = statmap_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, :]
-                if z_slices[i] is None:
-                    z_slice = np.argmax(np.nanmax(crop_data, axis=(0, 1)))
-                elif np.nansum(cor_slice) == 0:
-                    z_slice = 258
-                else:
-                    z_slice = z_slices[i]
-
-                axi_slice = crop_data[:, :, z_slice]
-                axi_slice = np.where(axi_slice > stat_min, axi_slice, np.nan)
-                axi_slice = axi_slice.T
-
-                ax_axi = fig.add_subplot(gs[1, i+2])
-                template_axi = template_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, z_slice].T
-                ax_axi.imshow(template_axi, cmap="gray", origin="lower", aspect="auto")
-
-                if underlay_fname:
-                    underlay_axi = underlay_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, z_slice].T
-                    ax_axi.imshow(underlay_axi, cmap="gray", origin="lower", aspect="auto", alpha=0.1)
-
-                im_axi = ax_axi.imshow(axi_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
-                ax_axi.axis("off")
-                ax_axi.text(0.5, 0.01, f"z={z_slice}", color="white", fontsize=5,
-                            ha="center", va="bottom", transform=ax_axi.transAxes)
-
-                if np.nansum(cor_slice) != 0:
-                    ax_cor.axhline(y=z_slice - z_min, color='white', linestyle='--', linewidth=0.8, alpha=0.7)
-
                 # orientation labels only on first map
                 if i == 0:
                     ax_cor.text(0.05, 0.05, "L", transform=ax_cor.transAxes, color="white", fontsize=7, ha="left", va="bottom")
                     ax_cor.text(0.95, 0.05, "R", transform=ax_cor.transAxes, color="white", fontsize=7, ha="right", va="bottom")
-                    ax_axi.text(0.02, 0.5, "L", transform=ax_axi.transAxes, color="white", fontsize=7, ha="left", va="center")
-                    ax_axi.text(0.98, 0.5, "R", transform=ax_axi.transAxes, color="white", fontsize=7, ha="right", va="center")
-                    ax_axi.text(0.5, 0.90, "A", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="top")
-                    ax_axi.text(0.5, 0.12, "P", transform=ax_axi.transAxes, color="white", fontsize=7, ha="center", va="bottom")
-
+                    
             # -- Shared colorbar
             cbar = self.plot_colorbar(
                 fig=fig,
