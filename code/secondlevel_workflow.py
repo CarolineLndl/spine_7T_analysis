@@ -90,17 +90,17 @@ for acq_name in config["design_exp"]["acq_names"]:
         task_name = selected_dirs[0].split("_")[0].split("-")[1]
         
         tsnr_id_fname.append(glob.glob(os.path.join(snr_path, selected_dirs[0], "*_moco_tsnr.nii.gz"))[0])
-        cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
-        warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
+        ##cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
+        ##warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
 
-    fname_avg_tsnr = tsnr_ana.generate_average_tsnr_in_pam50(
-        IDs=IDs,
-        task_name=task_name,
-        acq_name=acq_name,
-        tsnr_fnames=tsnr_id_fname,
-        seg_fnames=cord_seg_file,
-        warp_fnames=warp_file,
-        fname_mask=mask)
+    #fname_avg_tsnr = tsnr_ana.generate_average_tsnr_in_pam50(
+     #   IDs=IDs,
+      #  task_name=task_name,
+       # acq_name=acq_name,
+        #tsnr_fnames=tsnr_id_fname,
+        #seg_fnames=cord_seg_file,
+        #warp_fnames=warp_file,
+        #fname_mask=mask)
     
     output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
@@ -134,15 +134,15 @@ for acq_name in config["design_exp"]["acq_names"]:
         run_name = match.group(1) if match else ""
         run_names.append(run_name)
 
-    output_file=second_level_dir.format("FD") + f"/n{len(IDs)}_{tag}_FD.csv"
-    fd_files.append(glm_ana.extract_FD(IDs=IDs,task_name=tag,run_name=run_names,output_file=output_file,redo=False))
+    #output_file=second_level_dir.format("FD") + f"/n{len(IDs)}_{tag}_FD.csv"
+    #fd_files.append(glm_ana.extract_FD(IDs=IDs,task_name=tag,run_name=run_names,output_file=output_file,redo=False))
 
-postprocess.pair_ttest(
-    csv_files=fd_files,
-    value_col='mean_FD',
-    acq_col='acq',
-    task_filter=None, task_col=None,
-    output_fname=output_file.split('.csv')[0]+"_stats.csv", redo=True)
+#postprocess.pair_ttest(
+   # csv_files=fd_files,
+   # value_col='mean_FD',
+   # acq_col='acq',
+   # task_filter=None, task_col=None,
+   # output_fname=output_file.split('.csv')[0]+"_stats.csv", redo=True)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
