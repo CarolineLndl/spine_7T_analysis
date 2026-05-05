@@ -224,7 +224,7 @@ output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], 
 i_fnames_glm_pair = {}
 glm_plot={};dist_plot={};bar_plot={}
 task_name = "motor"
-for cluster_corr in [0.01,0.001]:
+for cluster_corr in [0.01]:
     i_fnames_glm_pair[cluster_corr] = {}
     glm_plot[cluster_corr] = {}; dist_plot[cluster_corr] = {}; bar_plot[cluster_corr]={}
     for vox_thr in [0.005]:
@@ -236,10 +236,20 @@ for cluster_corr in [0.01,0.001]:
         glm_plot[cluster_corr][vox_thr] = figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_{cluster_corr}_vox{vox_thr}_avg_map.png"),
                                    stat_min=2.3, 
-                                   stat_max=6,
+                                   stat_max=7,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
+        print("plot axial")
+        figures.plot_fmri_maps_axial(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
+                             output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_axial_{cluster_corr}_vox{vox_thr}_avg_map.png"),
+                             stat_min=2.3,
+                             stat_max=7,
+                             cbar_label='t-value',
+                             background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+                             underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
+                             n_slices=6,  
+                             redo=True)
 
 
         bar_plot[cluster_corr][vox_thr] = figures.bar_plot(

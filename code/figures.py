@@ -343,6 +343,117 @@ class Figures_main:
             plt.close(fig)
 
         return output_fname
+    
+    def plot_fmri_maps_axial(self, i_fnames=None, output_fname=None, stat_min=2.3, stat_max=5,
+                          titles=None, background_fname=None, cbar_label='t-value', cmap="autumn",
+                          z_slices=None, n_slices=6, mask_fname=None, underlay_fname=None,
+                          task_name=None, verbose=True, redo=False):
+
+        if output_fname is None:
+            raise ValueError("output_fname is empty")
+        if i_fnames is None or len(i_fnames) == 0:
+            raise ValueError("i_fnames is empty")
+        if background_fname is None:
+            raise ValueError("Please provide PAM50 template filename")
+
+        assert len(i_fnames) in [1, 2], f"Expected 1 or 2 maps, got {len(i_fnames)}"
+        n_maps = len(i_fnames)
+        if titles is None:
+            titles = [f"map{i}" for i in range(n_maps)]
+
+        if not os.path.exists(output_fname) or redo:
+            fig = plt.figure(figsize=(n_maps * 1.2, n_slices * 0.6))
+            fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.05)
+
+            gs = fig.add_gridspec(nrows=n_slices, ncols=n_maps,
+                                hspace=0.03, wspace=0.03)
+
+            # --- Load template ---
+            template_img = nib.load(background_fname)
+            template_data = nib.as_closest_canonical(template_img).get_fdata()
+
+            if underlay_fname is not None:
+                underlay_data = nib.as_closest_canonical(nib.load(underlay_fname)).get_fdata()
+
+            # --- Crop window ---
+            crop_x, crop_y = 30, 30
+
+            # --- Determine z slices from first map ---
+            stat_img0 = nib.as_closest_canonical(nib.load(i_fnames[0]))
+            statmap_data0 = stat_img0.get_fdata()
+            x0 = statmap_data0.shape[0] // 2
+            y0 = statmap_data0.shape[1] // 2
+            x_min_axi, x_max_axi = x0 - crop_x, x0 + crop_x
+            y_min_axi, y_max_axi = y0 - crop_y, y0 + crop_y
+            crop_stat0 = statmap_data0[x_min_axi:x_max_axi, y_min_axi:y_max_axi, :]
+
+            if z_slices is not None and len(z_slices) == n_slices:
+                selected_z = z_slices
+            else:
+                active_z = np.where(np.nanmax(crop_stat0, axis=(0, 1)) > stat_min)[0]
+                if len(active_z) >= n_slices:
+                    indices = np.linspace(0, len(active_z) - 1, n_slices, dtype=int)
+                    selected_z = active_z[indices]
+                else:
+                    selected_z = np.linspace(0, crop_stat0.shape[2] - 1, n_slices, dtype=int)
+
+            # --- Plot: col = map, row = slice ---
+            for col, fname in enumerate(i_fnames):
+                stat_img = nib.as_closest_canonical(nib.load(fname))
+                statmap_data = stat_img.get_fdata()
+                crop_stat = statmap_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, :]
+                crop_tmpl = template_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, :]
+
+                for row, z in enumerate(selected_z):
+                    ax = fig.add_subplot(gs[row, col])
+
+                    # Background
+                    tmpl_slice = crop_tmpl[:, :, z].T
+                    ax.imshow(tmpl_slice, cmap="gray", origin="lower", aspect="equal")
+
+                    if underlay_fname is not None:
+                        underlay_slice = underlay_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, z].T
+                        ax.imshow(underlay_slice, cmap="gray", origin="lower", aspect="equal", alpha=0.1)
+
+                    # Stat overlay
+                    stat_slice = crop_stat[:, :, z].copy()
+                    stat_slice = np.where(stat_slice > stat_min, stat_slice, np.nan)
+                    stat_slice = stat_slice.T
+
+                    if np.nansum(stat_slice) > 0:
+                        ax.imshow(stat_slice, cmap=cmap, origin="lower",
+                                vmin=stat_min, vmax=stat_max, aspect="equal")
+
+                    ax.text(0.5, 0.01, f"z={z}", color="white", fontsize=5,
+                            ha="center", va="bottom", transform=ax.transAxes)
+                    ax.axis("off")
+
+                    # Orientation labels on first slice of first col only
+                    if row == 0 and col == 0:
+                        ax.text(0.02, 0.5, "L", transform=ax.transAxes, color="white", fontsize=7, ha="left", va="center")
+                        ax.text(0.98, 0.5, "R", transform=ax.transAxes, color="white", fontsize=7, ha="right", va="center")
+                        ax.text(0.5, 0.95, "A", transform=ax.transAxes, color="white", fontsize=7, ha="center", va="top")
+                        ax.text(0.5, 0.05, "P", transform=ax.transAxes, color="white", fontsize=7, ha="center", va="bottom")
+
+                    # Column title on first row only
+                    if row == 0:
+                        ax.set_title(titles[col], color="black", fontweight='bold',
+                                    fontsize=9, fontname="Arial")
+
+            # -- Shared colorbar
+            cbar = self.plot_colorbar(
+                fig=fig,
+                stat_min=stat_min,
+                stat_max=stat_max,
+                cmap=cmap,
+                label=cbar_label,
+                left=0.2, bottom=0.01, width=0.6, height=0.015
+            )
+
+            plt.savefig(output_fname, transparent=True, dpi=300)
+            plt.close(fig)
+
+        return output_fname
 
     def plot_spinal_levels(self, fig, gs, ax_cor, cor_slice_shape, z_min, z_max,n_maps):
         """
