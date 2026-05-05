@@ -207,15 +207,15 @@ for acq_name in config["design_exp"]["acq_names"]:
 tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_tsnr_avg_map.png"),
                                    stat_min=5, 
-                                   stat_max=18,
+                                   stat_max=16,
                                    cmap='turbo',
                                    cbar_label='tSNR',
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=True)
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
 
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
                       map_files=[tsnr_plot],
                       graph_files=[box_plot["tsnr"],box_plot["ssnr"]],
-                      figsize=(3.2, 3.5), redo=True)
+                      figsize=(3.2, 3.5), redo=redo)
 
 # select the second level files
 # --- Plot GLM ---

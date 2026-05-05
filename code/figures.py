@@ -292,7 +292,7 @@ class Figures_main:
 
                 # --- Coronal slice ---
                 x_min, x_max = 35, 105
-                z_min, z_max = 200, 333
+                z_min, z_max = 175, 333
                 y_slice = 72
                 cor_slice = statmap_data[x_min:x_max, y_slice, z_min:z_max]
                 cor_slice = np.where(cor_slice > stat_min, cor_slice, np.nan)
