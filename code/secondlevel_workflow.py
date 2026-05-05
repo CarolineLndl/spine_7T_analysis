@@ -108,14 +108,15 @@ for acq_name in config["design_exp"]["acq_names"]:
     for metric in ["tsnr", "ssnr"]:
         fname_csv = glob.glob(os.path.join(snr_path.split("sub")[0], f"{metric}*_metrics_reduced.csv"))[0]
         stat_file = glob.glob(os.path.join(snr_path.split("sub")[0], f"{metric}*_metrics_reduced_stats.csv"))[0]
-        (ymin, ymax) = (6, 17) if metric == "tsnr" else (1, 5)
+        (ymin, ymax) = (6, 17) if metric == "tsnr" else (1.5, 4.5)
         y_label="temporal SNR" if metric == "tsnr" else "spatial SNR"
+        
         box_plot[metric] = figures.boxplots(csv_file=fname_csv, output_fname=os.path.join(output_fig, f"{len(IDs)}_{metric}_boxplot.png"),
                                   ymin=ymin, ymax=ymax, stats_file=stat_file,
                                   specify_y_label=y_label,
                                   x_data="acq", x_order=["shimBase","shimSlice"],
                                   indiv_values=True,
-                                  y_data=metric, redo=True)
+                                  y_data=metric, redo=redo)
 
 #------------------------------------------------------------------
 #------ Compute average FD
@@ -215,7 +216,7 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
                       map_files=[tsnr_plot],
                       graph_files=[box_plot["tsnr"],box_plot["ssnr"]],
-                      figsize=(3.2, 3.5), redo=redo)
+                      figsize=(3.5, 3), redo=redo)
 
 # select the second level files
 # --- Plot GLM ---

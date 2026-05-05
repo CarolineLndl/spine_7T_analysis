@@ -630,7 +630,7 @@ class Figures_main:
                 )
             fig = g.figure
             current_width = fig.get_figwidth()
-            fig.set_size_inches(current_width, 1.5)  # keep width, reduce height
+            #fig.set_size_inches(current_width, 1)  # keep width, reduce height
 
             # Apply custom outline and whisker colors to match the palette
             for ax in g.axes.flat:
@@ -762,13 +762,13 @@ class Figures_main:
                 ax.text((x1 + x2) / 2, y_bracket + (ymax - ymin) * 0.01,
                         sig_annotation,fontname="Arial",
                         ha='center', va='bottom',
-                        fontsize=7, color=bracket_color)
+                        fontsize=8, color=bracket_color)
             
             ax.set_xlabel('')
             y_label=specify_y_label if specify_y_label else y_data
 
-            ax.set_ylabel(y_label, fontsize=8, fontname="Arial",fontweight='bold')
-            ax.tick_params(axis='y', labelsize=7)
+            ax.set_ylabel(y_label, fontsize=12, fontname="Arial",fontweight='bold')
+            ax.tick_params(axis='y', labelsize=8)
             
 
             if output_tag:
@@ -787,7 +787,7 @@ class Figures_main:
             ax.set_xticks(range(len(df[x_data_f].unique())))
             #if plot_xlabels==True:
             ax.set_xticklabels(x_order if x_order else df[x_data_f].unique(), 
-                    rotation=45, fontsize=7, fontweight='bold', fontname="Arial", ha='right')
+                    rotation=45, fontsize=10, fontweight='bold', fontname="Arial", ha='right')
             #else:
              #   ax.set_xticklabels(['' ] * len(df[x_data_f].unique()))
             
@@ -801,7 +801,7 @@ class Figures_main:
         
     def combine_plots(self, output_fname, map_files, graph_files,
                   map_titles=None, graph_titles=None,
-                  figsize=(3.5, 3.5), graph_width_scale=1.0, graph_height_scale=1.0,redo=False):
+                  figsize=(3.5, 3.5), graph_width_scale=1.0, graph_height_scale=1.0,graph_col_scale=0.6,redo=False):
 
         n_maps = len(map_files)
         n_graphs = len(graph_files)
@@ -828,16 +828,21 @@ class Figures_main:
             map_col_width = figsize[1] * (map_w / map_h)
 
             # Normalize ratios relative to map width
-            map_widths = [0.9] * n_maps
-            graph_widths = [(graph_col_width / map_col_width)] * n_graph_cols
+            map_widths = [0.6] * n_maps
+            graph_widths = [(graph_col_width / map_col_width) * graph_col_scale] * n_graph_cols
             width_ratios = map_widths + graph_widths
 
-            fig = plt.figure(figsize=figsize)
-            gs = fig.add_gridspec(n_rows, n_maps + n_graph_cols,
-                                width_ratios=width_ratios,
-                                hspace=0.05, wspace=0.05)
+            total_graph_width = sum(graph_widths) * graph_col_scale
+            total_map_width = sum(map_widths)
+            new_figwidth = figsize[0] * (total_map_width + total_graph_width) / (total_map_width + sum(graph_widths))
+            fig = plt.figure(figsize=(new_figwidth, figsize[1]))
 
-            label_y = 1.02
+            fig = plt.figure(figsize=(new_figwidth, figsize[1]))
+            gs = fig.add_gridspec(n_rows, n_maps + n_graph_cols,
+                    width_ratios=width_ratios,
+                    hspace=0.05, wspace=0.05)
+
+            label_y = 0.98
             label_idx = 0
 
             # --- Map columns: span both rows ---
