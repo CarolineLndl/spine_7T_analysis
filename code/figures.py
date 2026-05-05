@@ -325,7 +325,7 @@ class Figures_main:
                 cmap=cmap,
                 label=cbar_label,
                 left=0.4 if n_maps == 2 else 0.11 ,
-                bottom=0.05, width=0.35, height=0.02
+                bottom=0.08, width=0.35, height=0.02
             )
 
             # -- Spinal levels
@@ -363,10 +363,10 @@ class Figures_main:
 
         if not os.path.exists(output_fname) or redo:
             fig = plt.figure(figsize=(n_maps * 0.6, n_slices * 0.6))
-            fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.05)
+            fig.subplots_adjust(left=0.01, right=0.99, top=0.92, bottom=0.05)
 
             gs = fig.add_gridspec(nrows=n_slices, ncols=n_maps,
-                                hspace=0.03, wspace=0.02)
+                                hspace=0.01, wspace=0.05)
 
             # --- Load template ---
             template_img = nib.load(background_fname)
@@ -499,7 +499,7 @@ class Figures_main:
         ax_levels_txt.axis("off")
         x_pos = -1.3 if n_maps == 2 else -0.25
 
-        labels = [("C5", 0.86), ("C6", 0.63), ("C7", 0.4), ("C8", 0.18), ("", 0.1)]
+        labels = [("C5", 0.88), ("C6", 0.67), ("C7", 0.475), ("C8", 0.285), ("T1", 0.10)]
         for label, y_pos in labels:
             ax_levels_txt.text(x_pos, y_pos, label, transform=ax_cor.transAxes,
                             color="black", fontsize=9, ha="center", va="center",
@@ -901,52 +901,63 @@ class Figures_main:
 
         
     def combine_plots(self, output_fname, map_files, graph_files,
-                  map_titles=None, graph_titles=None,
-                  figsize=(3.5, 3.5), graph_width_scale=1.0, graph_height_scale=1.0,graph_col_scale=0.6,redo=False):
+                  axial_files=None,
+                  map_titles=None, axial_titles=None, graph_titles=None,
+                  figsize=(3.5, 3.5), graph_width_scale=1.0, graph_height_scale=1.0,
+                  graph_col_scale=0.6, axial_col_scale=1.1, redo=False):
 
         n_maps = len(map_files)
         n_graphs = len(graph_files)
+        n_axial = len(axial_files) if axial_files else 0
 
         assert n_maps in (1, 2), f"Expected 1 or 2 map_files, got {n_maps}"
         assert n_graphs in (2, 4), f"Expected 2 or 4 graph_files, got {n_graphs}"
+        if axial_files:
+            assert n_axial in (1, 2), f"Expected 1 or 2 axial_files, got {n_axial}"
 
         if not os.path.exists(output_fname) or redo:
             n_graph_cols = n_graphs // 2
+            n_axial_cols = n_axial if axial_files else 0
             n_rows = 2
 
-            # Read image sizes to compute aspect-aware width ratios
+            # Read image sizes
             map_img = mpimg.imread(map_files[0])
             graph_img = mpimg.imread(graph_files[0])
             map_h, map_w = map_img.shape[:2]
             graph_h, graph_w = graph_img.shape[:2]
 
-            # Each graph cell height = figsize[1] / n_rows
-            # Scale graph column width to preserve graph aspect ratio
             graph_cell_height = figsize[1] / n_rows
             graph_col_width = graph_cell_height * (graph_w / graph_h)
-
-            # Map spans full height, compute equivalent width unit
             map_col_width = figsize[1] * (map_w / map_h)
 
-            # Normalize ratios relative to map width
+            # Width ratios
             map_widths = [0.6] * n_maps
+
+            axial_widths = []
+            if axial_files:
+                axial_img = mpimg.imread(axial_files[0])
+                axial_h, axial_w = axial_img.shape[:2]
+                axial_col_width = graph_cell_height * (axial_w / axial_h)
+                axial_widths = [(axial_col_width / map_col_width) * axial_col_scale] * n_axial_cols
+
             graph_widths = [(graph_col_width / map_col_width) * graph_col_scale] * n_graph_cols
-            width_ratios = map_widths + graph_widths
+            width_ratios = map_widths + axial_widths + graph_widths
 
-            total_graph_width = sum(graph_widths) * graph_col_scale
-            total_map_width = sum(map_widths)
-            new_figwidth = figsize[0] * (total_map_width + total_graph_width) / (total_map_width + sum(graph_widths))
+            total_width = sum(map_widths) + sum(axial_widths) + sum(graph_widths)
+            original_total = sum(map_widths) + sum([(graph_col_width / map_col_width)]) * n_graph_cols
+            new_figwidth = figsize[0] * total_width / original_total
             fig = plt.figure(figsize=(new_figwidth, figsize[1]))
 
-            fig = plt.figure(figsize=(new_figwidth, figsize[1]))
-            gs = fig.add_gridspec(n_rows, n_maps + n_graph_cols,
-                    width_ratios=width_ratios,
-                    hspace=0.05, wspace=0.05)
+            n_cols = n_maps + n_axial_cols + n_graph_cols
+            gs = fig.add_gridspec(n_rows, n_cols,
+                                width_ratios=width_ratios,
+                                hspace=0.05, wspace=0.05)
 
             label_y = 0.98
             label_idx = 0
 
             # --- Map columns: span both rows ---
+            
             for i, fname in enumerate(map_files):
                 ax = fig.add_subplot(gs[:, i])
                 img = mpimg.imread(fname)
@@ -955,10 +966,10 @@ class Figures_main:
                 ax.set_xlim(0, w)
                 ax.set_ylim(h, 0)
                 ax.axis('off')
-                ax.text(0.0, label_y, f"{chr(65 + label_idx)}.",
-                        ha='left', va='bottom',
-                        fontsize=8, fontweight='bold', fontname="Arial",
-                        transform=ax.transAxes, clip_on=False)
+                ax.text(0.0, 1.0, f"{chr(65 + label_idx)}.",
+                ha='left', va='bottom',
+                fontsize=8, fontweight='bold', fontname="Arial",
+                transform=ax.transAxes, clip_on=False)
                 label_idx += 1
                 if map_titles and i < len(map_titles):
                     ax.text(0.5, label_y, map_titles[i],
@@ -966,13 +977,35 @@ class Figures_main:
                             fontsize=12, fontweight='bold', fontname="Arial",
                             transform=ax.transAxes, clip_on=False)
 
+            # --- Axial columns: span both rows ---
+            if axial_files:
+                for i, fname in enumerate(axial_files):
+                    col = n_maps + i
+                    ax = fig.add_subplot(gs[:, col])
+                    img = mpimg.imread(fname)
+                    h, w = img.shape[:2]
+                    ax.imshow(img, aspect='auto')
+                    ax.set_xlim(0, w)
+                    ax.set_ylim(h, 0)
+                    ax.axis('off')
+                    ax.text(0.0, 1.0, f"{chr(65 + label_idx)}.",
+                            ha='left', va='bottom',
+                            fontsize=8, fontweight='bold', fontname="Arial",
+                            transform=ax.transAxes, clip_on=False)
+                    label_idx += 1
+                    if axial_titles and i < len(axial_titles):
+                        ax.text(0.5, 1.0, axial_titles[i],
+                                ha='center', va='bottom',
+                                fontsize=12, fontweight='bold', fontname="Arial",
+                                transform=ax.transAxes, clip_on=False)
+
             # --- Graph columns: 2-row grid ---
             for i, fname in enumerate(graph_files):
                 row = i // n_graph_cols
-                col = n_maps + (i % n_graph_cols)
+                col = n_maps + n_axial_cols + (i % n_graph_cols)
                 ax = fig.add_subplot(gs[row, col])
                 img = mpimg.imread(fname)
-                
+
                 margin_x = (1 - graph_width_scale) / 2
                 margin_y = (1 - graph_height_scale) / 2
                 ax_inner = ax.inset_axes([margin_x, margin_y, graph_width_scale, graph_height_scale])
@@ -983,7 +1016,7 @@ class Figures_main:
                 if graph_titles and i < len(graph_titles):
                     ax_inner.set_title(graph_titles[i], fontsize=7,
                                     fontweight='bold', fontname="Arial")
-                ax.text(0.0, label_y, f"{chr(65 + label_idx)}.",
+                ax.text(0.0, 1.0, f"{chr(65 + label_idx)}.",
                         ha='left', va='bottom',
                         fontsize=8, fontweight='bold', fontname="Arial",
                         transform=ax.transAxes, clip_on=False)

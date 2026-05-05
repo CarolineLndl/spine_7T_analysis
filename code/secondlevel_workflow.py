@@ -222,11 +222,11 @@ figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combin
 # --- Plot GLM ---
 output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 i_fnames_glm_pair = {}
-glm_plot={};dist_plot={};bar_plot={}
+glm_plot={};glm_axial_plot={};dist_plot={};bar_plot={}
 task_name = "motor"
 for cluster_corr in [0.01]:
     i_fnames_glm_pair[cluster_corr] = {}
-    glm_plot[cluster_corr] = {}; dist_plot[cluster_corr] = {}; bar_plot[cluster_corr]={}
+    glm_plot[cluster_corr] = {}; glm_axial_plot[cluster_corr] = {}; dist_plot[cluster_corr] = {}; bar_plot[cluster_corr]={}
     for vox_thr in [0.005]:
         i_fnames_glm_pair[cluster_corr][vox_thr] = []
         for acq_name in config["design_exp"]["acq_names"]:
@@ -236,20 +236,20 @@ for cluster_corr in [0.01]:
         glm_plot[cluster_corr][vox_thr] = figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_{cluster_corr}_vox{vox_thr}_avg_map.png"),
                                    stat_min=3, 
-                                   stat_max=7,
+                                   stat_max=6,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
 
-        figures.plot_fmri_maps_axial(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
+        glm_axial_plot[cluster_corr][vox_thr] =figures.plot_fmri_maps_axial(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                              output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_axial_{cluster_corr}_vox{vox_thr}_avg_map.png"),
                              stat_min=3,
-                             stat_max=7,
+                             stat_max=6,
                              cbar_label='t-value',
                              background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                              underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
-                             z_slices=[285,275,265,255,245,235,225],
-                             n_slices=7,  
+                             z_slices=[285,265,256,243,225],
+                             n_slices=5,  
                              redo=True)
 
 
@@ -265,8 +265,9 @@ for cluster_corr in [0.01]:
         
         figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_task_cluster_{cluster_corr}_vox_{vox_thr}_plots.png"),
                       map_files=[glm_plot[cluster_corr][vox_thr]],
+                      axial_files=[glm_axial_plot[cluster_corr][vox_thr]],
                       graph_files=[bar_plot[cluster_corr][vox_thr],dist_plot[cluster_corr][vox_thr]],
-                      figsize=(3.2, 3.5), redo=redo)
+                      figsize=(5, 4), redo=True)
 
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
