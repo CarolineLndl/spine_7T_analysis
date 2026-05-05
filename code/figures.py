@@ -263,10 +263,10 @@ class Figures_main:
 
         # --- Figure and gridspec ---
         if not os.path.exists(output_fname) or redo:
-            fig = plt.figure(figsize=(n_maps, 3.5))  # width scales with number of maps
-            fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.01)
+            fig = plt.figure(figsize=(n_maps, 3))  # width scales with number of maps
+            fig.subplots_adjust(left=0.01, right=0.99, top=0.92, bottom=0.1)
 
-            height_ratios = [6.5, 2.3]
+            height_ratios = [6, 0.2]
             gs = fig.add_gridspec(nrows=2, ncols=2 + n_maps,
                                 height_ratios=height_ratios,
                                 width_ratios=[0.2, 0.1] + [1] * n_maps,
@@ -325,7 +325,7 @@ class Figures_main:
                 cmap=cmap,
                 label=cbar_label,
                 left=0.4 if n_maps == 2 else 0.11 ,
-                bottom=0.2, width=0.35, height=0.02
+                bottom=0.05, width=0.35, height=0.02
             )
 
             # -- Spinal levels
@@ -586,7 +586,7 @@ class Figures_main:
         
         return output_fname
 
-    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, show_pvalues_if_sig=True, redo=False):
+    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, show_pvalues_if_sig=True,plot_xlabels=True, redo=False):
         """
         Create matrix of correlation boxplots with matching box outline and whisker colors.
         """
@@ -785,8 +785,11 @@ class Figures_main:
                 plt.legend([],[], frameon=False)
             
             ax.set_xticks(range(len(df[x_data_f].unique())))
+            #if plot_xlabels==True:
             ax.set_xticklabels(x_order if x_order else df[x_data_f].unique(), 
-                   rotation=45, fontsize=7, fontweight='bold', fontname="Arial", ha='right')
+                    rotation=45, fontsize=7, fontweight='bold', fontname="Arial", ha='right')
+            #else:
+             #   ax.set_xticklabels(['' ] * len(df[x_data_f].unique()))
             
             # Save the figure if requested
             plt.tight_layout(pad=0.1)
@@ -798,7 +801,7 @@ class Figures_main:
         
     def combine_plots(self, output_fname, map_files, graph_files,
                   map_titles=None, graph_titles=None,
-                  figsize=(3.5, 3.5), graph_width_scale=1.0, redo=False):
+                  figsize=(3.5, 3.5), graph_width_scale=1.0, graph_height_scale=1.0,redo=False):
 
         n_maps = len(map_files)
         n_graphs = len(graph_files)
@@ -863,11 +866,14 @@ class Figures_main:
                 col = n_maps + (i % n_graph_cols)
                 ax = fig.add_subplot(gs[row, col])
                 img = mpimg.imread(fname)
-                margin = (1 - graph_width_scale) / 2
-                ax_inner = ax.inset_axes([margin, 0, graph_width_scale, 1])
+                
+                margin_x = (1 - graph_width_scale) / 2
+                margin_y = (1 - graph_height_scale) / 2
+                ax_inner = ax.inset_axes([margin_x, margin_y, graph_width_scale, graph_height_scale])
                 ax_inner.imshow(img, aspect='auto')
                 ax_inner.axis('off')
                 ax.axis('off')
+
                 if graph_titles and i < len(graph_titles):
                     ax_inner.set_title(graph_titles[i], fontsize=7,
                                     fontweight='bold', fontname="Arial")
