@@ -259,7 +259,7 @@ for ID in IDs:
 figures.plot_first_level_maps(i_fnames=i_fnames_by_runs,
                                          output_fname=os.path.join(fig_dir, f"first_level_task_by_runs_n{len(i_fnames_by_runs)}.png"),
                                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                          mask_fname=cropped_PAM50_fname,
+                                          mask_fname=common_mask_fname,
                                           titles=["shimBase","shimSlice","shimSlice"],
                                          #underlay_fname=os.path.join(path_code, "template", config["PAM50_cord"]),
                                           task_name=tag,

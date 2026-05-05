@@ -323,7 +323,7 @@ class GLM_main:
             raise ValueError("Please provide the list of filenames of the input contrast images.")
         
         # --- Define directories  -----------------------------------------------------------
-        second_level_dir = os.path.join(self.second_level_dir.format("glm"), f"cluster_p{cluster_corr}", task_name)
+        second_level_dir = os.path.join(self.second_level_dir.format("glm"), f"cluster_p{cluster_corr}_vox{vox_thr}_perm{n_perm}", task_name)
         os.makedirs(second_level_dir, exist_ok=True)
 
         # Load design matrix file if provided, otherwise create a default design matrix with an intercept only
@@ -356,7 +356,7 @@ class GLM_main:
                     smoothing_fwhm=smoothing_fwhm,
                     n_jobs=n_jobs,
                     threshold=vox_thr, # voxel level threshold for cluster definition (uncorrected p-value)
-                    #tfce=True,
+                    tfce=False,
                     verbose=1,
                     )
                 
