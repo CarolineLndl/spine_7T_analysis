@@ -235,20 +235,21 @@ for cluster_corr in [0.01]:
 
         glm_plot[cluster_corr][vox_thr] = figures.plot_fmri_maps(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_{cluster_corr}_vox{vox_thr}_avg_map.png"),
-                                   stat_min=2.3, 
+                                   stat_min=3, 
                                    stat_max=7,
                                    cbar_label='t-value',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
-        print("plot axial")
+
         figures.plot_fmri_maps_axial(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                              output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_axial_{cluster_corr}_vox{vox_thr}_avg_map.png"),
-                             stat_min=2.3,
+                             stat_min=3,
                              stat_max=7,
                              cbar_label='t-value',
                              background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                              underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
-                             n_slices=6,  
+                             z_slices=[285,275,265,255,245,235,225],
+                             n_slices=7,  
                              redo=True)
 
 

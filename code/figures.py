@@ -345,7 +345,7 @@ class Figures_main:
         return output_fname
     
     def plot_fmri_maps_axial(self, i_fnames=None, output_fname=None, stat_min=2.3, stat_max=5,
-                          titles=None, background_fname=None, cbar_label='t-value', cmap="autumn",
+                          titles=["shimBase", "shimSlice"], background_fname=None, cbar_label='t-value', cmap="autumn",
                           z_slices=None, n_slices=6, mask_fname=None, underlay_fname=None,
                           task_name=None, verbose=True, redo=False):
 
@@ -362,11 +362,11 @@ class Figures_main:
             titles = [f"map{i}" for i in range(n_maps)]
 
         if not os.path.exists(output_fname) or redo:
-            fig = plt.figure(figsize=(n_maps * 1.2, n_slices * 0.6))
+            fig = plt.figure(figsize=(n_maps * 0.6, n_slices * 0.6))
             fig.subplots_adjust(left=0.01, right=0.99, top=0.95, bottom=0.05)
 
             gs = fig.add_gridspec(nrows=n_slices, ncols=n_maps,
-                                hspace=0.03, wspace=0.03)
+                                hspace=0.03, wspace=0.02)
 
             # --- Load template ---
             template_img = nib.load(background_fname)
@@ -413,7 +413,7 @@ class Figures_main:
 
                     if underlay_fname is not None:
                         underlay_slice = underlay_data[x_min_axi:x_max_axi, y_min_axi:y_max_axi, z].T
-                        ax.imshow(underlay_slice, cmap="gray", origin="lower", aspect="equal", alpha=0.1)
+                        ax.imshow(underlay_slice, cmap="gray", origin="lower", aspect="auto", alpha=0.1)
 
                     # Stat overlay
                     stat_slice = crop_stat[:, :, z].copy()
@@ -422,7 +422,7 @@ class Figures_main:
 
                     if np.nansum(stat_slice) > 0:
                         ax.imshow(stat_slice, cmap=cmap, origin="lower",
-                                vmin=stat_min, vmax=stat_max, aspect="equal")
+                                vmin=stat_min, vmax=stat_max, aspect="auto")
 
                     ax.text(0.5, 0.01, f"z={z}", color="white", fontsize=5,
                             ha="center", va="bottom", transform=ax.transAxes)
@@ -433,22 +433,12 @@ class Figures_main:
                         ax.text(0.02, 0.5, "L", transform=ax.transAxes, color="white", fontsize=7, ha="left", va="center")
                         ax.text(0.98, 0.5, "R", transform=ax.transAxes, color="white", fontsize=7, ha="right", va="center")
                         ax.text(0.5, 0.95, "A", transform=ax.transAxes, color="white", fontsize=7, ha="center", va="top")
-                        ax.text(0.5, 0.05, "P", transform=ax.transAxes, color="white", fontsize=7, ha="center", va="bottom")
+                        #ax.text(0.5, 0.05, "P", transform=ax.transAxes, color="white", fontsize=7, ha="center", va="bottom")
 
                     # Column title on first row only
                     if row == 0:
                         ax.set_title(titles[col], color="black", fontweight='bold',
                                     fontsize=9, fontname="Arial")
-
-            # -- Shared colorbar
-            cbar = self.plot_colorbar(
-                fig=fig,
-                stat_min=stat_min,
-                stat_max=stat_max,
-                cmap=cmap,
-                label=cbar_label,
-                left=0.2, bottom=0.01, width=0.6, height=0.015
-            )
 
             plt.savefig(output_fname, transparent=True, dpi=300)
             plt.close(fig)
