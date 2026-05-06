@@ -269,7 +269,8 @@ for cluster_corr in [0.01,0.001]:
                       map_files=[glm_plot[cluster_corr][vox_thr]],
                       axial_files=[glm_axial_plot[cluster_corr][vox_thr]],
                       graph_files=[bar_plot[cluster_corr][vox_thr],dist_plot[cluster_corr][vox_thr]],
-                      figsize=(5, 3.8), redo=redo)
+                      label_idx=True,
+                      figsize=(5, 3.8), redo=True)
 
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 

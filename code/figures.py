@@ -966,11 +966,6 @@ class Figures_main:
             width_ratios = map_widths + axial_widths + graph_widths
 
             total_width = sum(map_widths) + sum(axial_widths) + sum(graph_widths)
-            #if graph_files:
-             #   original_total = sum(map_widths) + (graph_col_width / map_col_width) * n_graph_cols
-            #else:
-             #   original_total = sum(map_widths)
-            #new_figwidth = figsize[0] * total_width / original_total
 
             new_figwidth = min(figsize[1] * (map_col_width * sum(width_ratios) / sum(map_widths)), figsize[0])
             fig = plt.figure(figsize=(new_figwidth, figsize[1]))
