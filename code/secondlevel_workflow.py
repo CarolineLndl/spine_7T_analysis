@@ -90,17 +90,17 @@ for acq_name in config["design_exp"]["acq_names"]:
         task_name = selected_dirs[0].split("_")[0].split("-")[1]
         
         tsnr_id_fname.append(glob.glob(os.path.join(snr_path, selected_dirs[0], "*_moco_tsnr.nii.gz"))[0])
-        ##cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
-        ##warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
+        cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
+        warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
 
-    #fname_avg_tsnr = tsnr_ana.generate_average_tsnr_in_pam50(
-     #   IDs=IDs,
-      #  task_name=task_name,
-       # acq_name=acq_name,
-        #tsnr_fnames=tsnr_id_fname,
-        #seg_fnames=cord_seg_file,
-        #warp_fnames=warp_file,
-        #fname_mask=mask)
+    fname_avg_tsnr = tsnr_ana.generate_average_tsnr_in_pam50(
+        IDs=IDs,
+        task_name=task_name,
+        acq_name=acq_name,
+        tsnr_fnames=tsnr_id_fname,
+        seg_fnames=cord_seg_file,
+        warp_fnames=warp_file,
+        fname_mask=mask)
     
     output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], "second_level")
 
@@ -135,15 +135,15 @@ for acq_name in config["design_exp"]["acq_names"]:
         run_name = match.group(1) if match else ""
         run_names.append(run_name)
 
-    #output_file=second_level_dir.format("FD") + f"/n{len(IDs)}_{tag}_FD.csv"
-    #fd_files.append(glm_ana.extract_FD(IDs=IDs,task_name=tag,run_name=run_names,output_file=output_file,redo=False))
+    output_file=second_level_dir.format("FD") + f"/n{len(IDs)}_{tag}_FD.csv"
+    fd_files.append(glm_ana.extract_FD(IDs=IDs,task_name=tag,run_name=run_names,output_file=output_file,redo=False))
 
-#postprocess.pair_ttest(
-   # csv_files=fd_files,
-   # value_col='mean_FD',
-   # acq_col='acq',
-   # task_filter=None, task_col=None,
-   # output_fname=output_file.split('.csv')[0]+"_stats.csv", redo=True)
+postprocess.pair_ttest(
+    csv_files=fd_files,
+    value_col='mean_FD',
+    acq_col='acq',
+    task_filter=None, task_col=None,
+    output_fname=output_file.split('.csv')[0]+"_stats.csv", redo=True)
 
 #------------------------------------------------------------------
 #------ Run second level analysis
@@ -211,12 +211,12 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    stat_max=16,
                                    cmap='turbo',
                                    cbar_label='tSNR',
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=True)
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
 
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
                       map_files=[tsnr_plot],
                       graph_files=[box_plot["tsnr"],box_plot["ssnr"]],
-                      figsize=(3.5, 3), redo=True)
+                      figsize=(3.5, 3.5), redo=redo)
 
 # select the second level files
 # --- Plot GLM ---
@@ -241,7 +241,7 @@ for cluster_corr in [0.01,0.001]:
                                    cbar_label='t-value',
                                    z_slices=z_slices,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
         glm_axial_plot[cluster_corr][vox_thr] =figures.plot_fmri_maps_axial(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                              output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_axial_{cluster_corr}_vox{vox_thr}_avg_map.png"),
@@ -252,7 +252,7 @@ for cluster_corr in [0.01,0.001]:
                              underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
                              z_slices=z_slices,
                              n_slices=len(z_slices),  
-                             redo=True)
+                             redo=redo)
 
 
         bar_plot[cluster_corr][vox_thr] = figures.bar_plot(
@@ -269,7 +269,7 @@ for cluster_corr in [0.01,0.001]:
                       map_files=[glm_plot[cluster_corr][vox_thr]],
                       axial_files=[glm_axial_plot[cluster_corr][vox_thr]],
                       graph_files=[bar_plot[cluster_corr][vox_thr],dist_plot[cluster_corr][vox_thr]],
-                      figsize=(5, 4), redo=True)
+                      figsize=(5, 3.8), redo=redo)
 
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
