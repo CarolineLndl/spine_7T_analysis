@@ -211,12 +211,12 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    stat_max=16,
                                    cmap='turbo',
                                    cbar_label='tSNR',
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=True)
 
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
                       map_files=[tsnr_plot],
                       graph_files=[box_plot["tsnr"],box_plot["ssnr"]],
-                      figsize=(3.5, 3), redo=redo)
+                      figsize=(3.5, 3), redo=True)
 
 # select the second level files
 # --- Plot GLM ---
@@ -241,7 +241,7 @@ for cluster_corr in [0.01,0.001]:
                                    cbar_label='t-value',
                                    z_slices=z_slices,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
 
         glm_axial_plot[cluster_corr][vox_thr] =figures.plot_fmri_maps_axial(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                              output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_axial_{cluster_corr}_vox{vox_thr}_avg_map.png"),
@@ -252,7 +252,7 @@ for cluster_corr in [0.01,0.001]:
                              underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
                              z_slices=z_slices,
                              n_slices=len(z_slices),  
-                             redo=redo)
+                             redo=True)
 
 
         bar_plot[cluster_corr][vox_thr] = figures.bar_plot(
@@ -302,16 +302,35 @@ for ID in IDs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 icc_maps,icc_maps_s=glm_ana.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0, redo=redo)
-figures.plot_fmri_maps(i_fnames=[icc_maps],
-                          output_fname=os.path.join(f"{output_fig}", f"n{len(IDs)}_icc_run-01_run-02.png"),
-                          titles=["ICC"],
-                          cmap="viridis",
+z_slices=[324,306,268,238,222,204] # slices to display in axial view,
+icc_plot=figures.plot_fmri_maps(i_fnames=[icc_maps],
+                          output_fname=os.path.join(f"{output_fig}", f"n{len(IDs_2runs)}_icc_run-01_run-02.png"),
+                          titles=[""],
+                          cmap="rainbow",
                           cbar_label='ICC',
-                          z_slices=[262],
-                          stat_min=0.1,
+                          z_slices=z_slices,
+                          stat_min=0.3,
                           stat_max=0.9,
                           background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
+                          redo=redo)
+
+icc_axial_plot=figures.plot_fmri_maps_axial(i_fnames=[icc_maps],
+                             output_fname=os.path.join(output_fig, f"n{len(IDs_2runs)}_icc__run-01_run-02_axial.png"),
+                             cmap="rainbow",
+                             stat_min=0.3,
+                             stat_max=0.9,
+                             titles=[""],
+                             background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+                             underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
+                             z_slices=z_slices,
+                             n_slices=len(z_slices),  
+                             redo=redo)
+
+figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs_2runs)}_combined_icc_plots.png"),
+                      map_files=[icc_plot],label_idx=False,
+                      axial_files=[icc_axial_plot],
+                      figsize=(2, 4), redo=redo)
+
 
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
@@ -339,13 +358,6 @@ for ID in IDs_2runs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 icc_maps,icc_maps_s = glm_ana.run_icc(IDs=IDs_2runs, i_fnames=i_fnames_by_runs, o_dir=output_dir, mask_file=mask, threshold=0)
-# postprocess.plot_ICC_maps(i_fname=icc_maps,
-#                          output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
-#                          cmap="turbo",
-#                          stat_min=0.1,
-#                          stat_max=0.9,
-#                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-#                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
 
 print("", flush=True)
 print(f'=== ICC between sliceShim and sliceBase  done', flush=True)
