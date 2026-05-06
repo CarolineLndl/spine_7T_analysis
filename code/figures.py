@@ -307,6 +307,17 @@ class Figures_main:
                     print(f"warning: no suprathreshold voxels found for {titles[i]} (y={y_slice} coronal slice), skipping statmap overlay")
                 else:
                     im_cor = ax_cor.imshow(cor_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
+                
+                # dashed lines for z_slices ──────────────────────────────────────────
+                if z_slices is not None:
+                    slices = z_slices if isinstance(z_slices, (list, tuple)) else [z_slices]
+                    for z_val in slices:
+                        row = z_val - z_min         
+                        if 0 <= row < cor_slice.shape[0]:
+                            ax_cor.axhline(y=row, color="white", linewidth=0.3,
+                                        linestyle="--", alpha=0.85)
+                
+                
                 ax_cor.text(0.5, 0.01, f"y={y_slice}", color="white", fontsize=6.7,
                             ha="center", va="bottom", transform=ax_cor.transAxes)
                 ax_cor.axis("off")

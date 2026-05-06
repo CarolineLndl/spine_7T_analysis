@@ -224,9 +224,10 @@ output_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"], 
 i_fnames_glm_pair = {}
 glm_plot={};glm_axial_plot={};dist_plot={};bar_plot={}
 task_name = "motor"
-for cluster_corr in [0.01]:
+for cluster_corr in [0.01,0.001]:
     i_fnames_glm_pair[cluster_corr] = {}
     glm_plot[cluster_corr] = {}; glm_axial_plot[cluster_corr] = {}; dist_plot[cluster_corr] = {}; bar_plot[cluster_corr]={}
+    z_slices=[280,266,256,243,225] # slices to display in axial view, 
     for vox_thr in [0.005]:
         i_fnames_glm_pair[cluster_corr][vox_thr] = []
         for acq_name in config["design_exp"]["acq_names"]:
@@ -238,6 +239,7 @@ for cluster_corr in [0.01]:
                                    stat_min=3, 
                                    stat_max=6,
                                    cbar_label='t-value',
+                                   z_slices=z_slices,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
 
@@ -248,8 +250,8 @@ for cluster_corr in [0.01]:
                              cbar_label='t-value',
                              background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
                              underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
-                             z_slices=[285,265,256,243,225],
-                             n_slices=5,  
+                             z_slices=z_slices,
+                             n_slices=len(z_slices),  
                              redo=True)
 
 
