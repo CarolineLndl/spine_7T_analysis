@@ -241,7 +241,7 @@ for cluster_corr in [0.01,0.001]:
                                    cbar_label='t-value',
                                    z_slices=z_slices,
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=True)
+                                   underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),redo=redo)
 
         glm_axial_plot[cluster_corr][vox_thr] =figures.plot_fmri_maps_axial(i_fnames=i_fnames_glm_pair[cluster_corr][vox_thr],
                              output_fname=os.path.join(output_fig, f"n{len(IDs)}_glm_axial_{cluster_corr}_vox{vox_thr}_avg_map.png"),
@@ -252,7 +252,7 @@ for cluster_corr in [0.01,0.001]:
                              underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]),
                              z_slices=z_slices,
                              n_slices=len(z_slices),  
-                             redo=True)
+                             redo=redo)
 
 
         bar_plot[cluster_corr][vox_thr] = figures.bar_plot(

@@ -248,7 +248,7 @@ class Figures_main:
         return output_fname
     
     def plot_fmri_maps(self, i_fnames=None, output_fname=None, stat_min=2.3, stat_max=5,titles = ["shimBase", "shimSlice"],
-                  background_fname=None, cbar_label='t-value', cmap="autumn", z_slices=[None,None],
+                  background_fname=None, cbar_label='t-value', cmap="autumn", z_slices=None,
                   mask_fname=None, underlay_fname=None, task_name=None, verbose=True, redo=False):
 
         if output_fname is None:
