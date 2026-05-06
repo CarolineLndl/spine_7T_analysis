@@ -256,11 +256,11 @@ figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combin
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------
 
-# ----------  betwen shimSlice run01 vs run02 ---
+# ----------  between shimSlice run01 vs run02 ---
 print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  start', flush=True)
 print("=========================================", flush=True)
-output_dir = second_level_dir.format("icc") + "/shimSlice_run01_vs_run02"
+output_dir = os.path.join(second_level_dir.format("icc"), "shimSlice_run01_vs_run02")
 os.makedirs(output_dir, exist_ok=True)
 i_fnames_by_runs = []
 tag = "task-motor_acq-shimSlice+3mm"
@@ -282,9 +282,9 @@ for ID in IDs:
     
     i_fnames_by_runs.append(i_fnames_runs)
 
-icc_maps,icc_maps_s=glm_ana.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0)
+icc_maps,icc_maps_s=glm_ana.run_icc(IDs=IDs_2runs,i_fnames=i_fnames_by_runs,o_dir=output_dir, mask_file=mask, threshold=0, redo=redo)
 figures.plot_fmri_maps(i_fnames=[icc_maps],
-                          output_fname=f"{output_fig}/n{len(IDs)}_icc_run-01_run-02.png",
+                          output_fname=os.path.join(f"{output_fig}", f"n{len(IDs)}_icc_run-01_run-02.png"),
                           titles=["ICC"],
                           cmap="viridis",
                           cbar_label='ICC',
@@ -300,9 +300,9 @@ print("=========================================", flush=True)
 
 # ----------  betwen shimBase and shimSlice ---
 print("", flush=True)
-print(f'=== ICC between sliceShim aand sliceBase  start', flush=True)
+print(f'=== ICC between sliceShim and sliceBase  start', flush=True)
 print("=========================================", flush=True)
-output_dir = second_level_dir.format("icc") + "/shimBase_vs_shimSlice"
+output_dir = os.path.join(second_level_dir.format("icc"), "shimBase_vs_shimSlice")
 os.makedirs(output_dir, exist_ok=True)
 i_fnames_by_runs = []
 
@@ -320,14 +320,14 @@ for ID in IDs_2runs:
     i_fnames_by_runs.append(i_fnames_runs)
 
 icc_maps,icc_maps_s = glm_ana.run_icc(IDs=IDs_2runs, i_fnames=i_fnames_by_runs, o_dir=output_dir, mask_file=mask, threshold=0)
-#postprocess.plot_ICC_maps(i_fname=icc_maps,
- #                         output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
-  #                        cmap="turbo",
-   #                       stat_min=0.1,
-    #                      stat_max=0.9,
-     #                     background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
-      #                    underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
+# postprocess.plot_ICC_maps(i_fname=icc_maps,
+#                          output_fname=output_fig + "/icc_shimBase_ShimSlice.png",
+#                          cmap="turbo",
+#                          stat_min=0.1,
+#                          stat_max=0.9,
+#                          background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),
+#                          underlay_fname=os.path.join(path_code, "template", config["PAM50_gm"]))
 
 print("", flush=True)
-print(f'=== ICC between sliceShim aand sliceBase  done', flush=True)
+print(f'=== ICC between sliceShim and sliceBase  done', flush=True)
 print("=========================================", flush=True)
