@@ -315,7 +315,7 @@ for ID_nb, ID in enumerate(IDs):
     print("=========================================", flush=True)
 
 df = pd.DataFrame(acq_parameters)
-df_ordered = df[['ID', 'task', 'acq', 'run', 'EchoTime', 'RepetitionTime', 'FlipAngle', 'NumberOfVolumes']]
+df_ordered = df[['ID', 'task', 'acq', 'run', 'EchoTime', 'RepetitionTime', 'FlipAngle', 'BandwidthRO', 'BandwidthPerPixelRO', 'BandwidthPerPixelPE', 'EchoSpacing', 'NumberOfVolumes']]
 df_ordered.to_csv(os.path.join(derivatives_dir, "processing", "acquisition_parameters.csv"), index=False)
 
 # Print participant metrics

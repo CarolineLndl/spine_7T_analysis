@@ -405,6 +405,19 @@ def extract_params(fname_nii):
     params['RepetitionTime'] = json_data.get('RepetitionTime', None)
     params['EchoTime'] = json_data.get('EchoTime', None)
     params['FlipAngle'] = json_data.get('FlipAngle', None)
+    dwell_time = json_data.get('DwellTime', None)
+    if dwell_time is not None:
+        params['BandwidthRO'] = 1 / dwell_time
+    else:
+        params['BandwidthRO'] = None
+    bandwidth_per_pix_pe = json_data.get('BandwidthPerPixelPhaseEncode', None)
+    params['BandwidthPerPixelPE'] = bandwidth_per_pix_pe
+    params['BandwidthPerPixelRO'] = json_data.get('PixelBandwidth', None)
+
+    if bandwidth_per_pix_pe is not None and json_data.get('ParallelReductionFactorInPlane', None) is not None and json_data.get('PartialFourier', None) is not None and json_data.get('AcquisitionMatrixPE', None) is not None:
+        params['EchoSpacing'] = 1 / (bandwidth_per_pix_pe * json_data.get('AcquisitionMatrixPE', None) * json_data.get('PartialFourier', None) / json_data.get('ParallelReductionFactorInPlane', None))
+    else:
+        params['EchoSpacing'] = None
 
     nii = nib.load(fname_nii)
     if nii.ndim >= 4:
