@@ -272,6 +272,24 @@ for cluster_corr in [0.01,0.001]:
                       label_idx=True,
                       figsize=(5, 3.8), redo=True)
 
+        # Calculate activation map overlap
+        # load the two activation maps
+        if cluster_corr==0.01:
+            import nibabel as nib
+            activation_map1 = nib.load(i_fnames_glm_pair[cluster_corr][vox_thr][0]).get_fdata()
+            activation_map2 = nib.load(i_fnames_glm_pair[cluster_corr][vox_thr][1]).get_fdata()
+
+            shim_base = activation_map1 > 0
+            shim_slice = activation_map2 > 0
+            print(shim_base)
+            print(shim_base.sum())
+
+            overlap = shim_base & shim_slice
+            print("overlap:", overlap.sum())
+
+            overlap_percentage = overlap.sum() / shim_base.sum() * 100
+            print(f"Overlap between Shimbase and ShimSlice: {overlap_percentage:.2f}%")
+
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------
