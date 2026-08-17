@@ -700,7 +700,7 @@ class Figures_main:
         
         return output_fname
 
-    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, show_pvalues_if_sig=True,plot_xlabels=True, redo=False):
+    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, show_pvalues_if_sig=True,plot_xlabels=True, redo=False, x_labels=None, stats_height_scaling=0.97):
         """
         Create matrix of correlation boxplots with matching box outline and whisker colors.
         """
@@ -842,48 +842,56 @@ class Figures_main:
                     xs = [coords[c][0] for c in ordered_cats]
                     ys = [coords[c][1] for c in ordered_cats]
                     ax.plot(xs, ys, color='grey', alpha=1,linestyle='--', linewidth=1, zorder=1) #linestyle='--',
-            
+
             # ------- Add significance annotation if stats_file provided
             if stats_file is not None:
                 stats_df = pd.read_csv(stats_file)
                 ax = g.axes.flat[0]
 
-                # Get x positions of the two conditions
-                if x_order:
-                    x1 = x_order.index(stats_df['cond1'].values[0])
-                    x2 = x_order.index(stats_df['cond2'].values[0])
-                else:
-                    cats = list(df[x_data_f].unique())
-                    x1 = cats.index(stats_df['cond1'].values[0])
-                    x2 = cats.index(stats_df['cond2'].values[0])
+                if ymax == None:
+                    ymax = ax.get_ylim()[1]
+                if ymin == None:
+                    ymin = ax.get_ylim()[0]
 
-                stars = stats_df['significance'].values[0]
-                if stars != 'ns' and show_pvalues_if_sig:
-                    pvalue = stats_df['p_value'].values[0]
-                    # sig_annotation = f"{stars}\n(p={pvalue:.3f})"
-                    sig_annotation = f"p={pvalue:.3f}"
-                else:
-                    sig_annotation = stars
+                for line in stats_df.itertuples():
+                    # Get x positions of the two conditions
+                    if x_order:
+                        x1 = x_order.index(line.cond1)
+                        x2 = x_order.index(line.cond2)
+                    else:
+                        cats = list(df[x_data_f].unique())
+                        x1 = cats.index(line.cond1)
+                        x2 = cats.index(line.cond2)
 
-                # Draw bracket
-                y_bracket = ymax * 0.97  # just below the top
-                y_tip     = y_bracket - (ymax - ymin) * 0.02
-                bracket_color = 'black'
+                    stars = line.significance
+                    if stars != 'ns' and show_pvalues_if_sig:
+                        pvalue = line.p_value
+                        # sig_annotation = f"{stars}\n(p={pvalue:.3f})"
+                        if float(pvalue) < 1e-3:
+                            sig_annotation = f"p={pvalue:.1e}"
+                        else:
+                            sig_annotation = f"p={pvalue:.3f}"
+                    else:
+                        sig_annotation = stars
 
-                ax.plot([x1, x1, x2, x2], 
-                        [y_tip, y_bracket, y_bracket, y_tip],
-                        color=bracket_color, linewidth=1)
-                ax.text((x1 + x2) / 2, y_bracket + (ymax - ymin) * 0.01,
-                        sig_annotation,fontname="Arial",
-                        ha='center', va='bottom',
-                        fontsize=8, color=bracket_color)
+                    # Draw bracket
+                    y_bracket = ymax * stats_height_scaling  # just below the top
+                    y_tip     = y_bracket - (ymax - ymin) * 0.02
+                    bracket_color = 'black'
+
+                    ax.plot([x1, x1, x2, x2],
+                            [y_tip, y_bracket, y_bracket, y_tip],
+                            color=bracket_color, linewidth=1)
+                    ax.text((x1 + x2) / 2, y_bracket + (ymax - ymin) * 0.01,
+                            sig_annotation,fontname="Arial",
+                            ha='center', va='bottom',
+                            fontsize=8, color=bracket_color)
             
             ax.set_xlabel('')
             y_label=specify_y_label if specify_y_label else y_data
 
             ax.set_ylabel(y_label, fontsize=12, fontname="Arial",fontweight='bold')
             ax.tick_params(axis='y', labelsize=8)
-            
 
             if output_tag:
                 g.set(title=output_tag)
@@ -900,14 +908,20 @@ class Figures_main:
             
             ax.set_xticks(range(len(df[x_data_f].unique())))
             #if plot_xlabels==True:
-            ax.set_xticklabels(x_order if x_order else df[x_data_f].unique(), 
+            if x_labels:
+                labels = x_labels
+            elif x_order:
+                labels = x_order
+            else:
+                labels = df[x_data_f].unique()
+            ax.set_xticklabels(labels,
                     rotation=45, fontsize=10, fontweight='bold', fontname="Arial", ha='right')
             #else:
              #   ax.set_xticklabels(['' ] * len(df[x_data_f].unique()))
             
             # Save the figure if requested
             plt.tight_layout(pad=0.1)
-            plt.savefig(output_fname, dpi=300, transparent=True)
+            plt.savefig(output_fname, dpi=600, transparent=True)
             plt.close()
         
         return output_fname
@@ -1052,6 +1066,6 @@ class Figures_main:
 
             fig.subplots_adjust(wspace=0.05, hspace=0.05,
                                 left=0.01, right=0.99, top=0.93, bottom=0.01)
-            plt.savefig(output_fname, dpi=300, transparent=True, bbox_inches='tight')
+            plt.savefig(output_fname, dpi=600, transparent=True, bbox_inches='tight')
             plt.close()
 
