@@ -52,6 +52,7 @@ sys.path.append(os.path.join(path_code, "code"))  # Change this line according t
 def main():
     print("Starting shimming analysis...")
     path_shimming = os.path.join(path_data, "derivatives", "processing", "shimming")
+    path_figures = os.path.join(path_data, "derivatives", "processing", "figures")
     df = pd.DataFrame(columns=["ID", "Experiment", "rmse", "std"])
 
     exps = {
@@ -269,7 +270,7 @@ def main():
                                   indiv_values=False, x_labels=plot_labels,
                                   y_data=metric, redo=True, aspect=1 , height=3.7))
 
-    figs.combine_plots(os.path.join(path_shimming, "boxplot_combined.png"), plots,
+    figs.combine_plots(os.path.join(path_figures, "shim_boxplots.png"), plots,
                        figsize=(5, 3), redo=True)
 
 
