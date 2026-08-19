@@ -1,9 +1,13 @@
 import json,sys, os, glob, re, argparse
+import shutil
+
 import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 import pandas as pd
 import subprocess
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.gridspec as gridspec
 
 from nibabel.processing import resample_from_to
 from postprocess import pair_ttest
@@ -50,6 +54,8 @@ sys.path.append(os.path.join(path_code, "code"))  # Change this line according t
 
 
 def main():
+    mask_vert = False
+
     print("Starting shimming analysis...")
     path_shimming = os.path.join(path_data, "derivatives", "processing", "shimming")
     path_figures = os.path.join(path_data, "derivatives", "processing", "figures")
@@ -63,13 +69,13 @@ def main():
             "opt_cri": None,
             "slices": "volume"
         },
-        "shimmed_volume_orders_012_pi": {
-            "order": "0,1,2",
-            "sig_loss": None,
-            "opt_meth": "pseudo_inverse",
-            "opt_cri": None,
-            "slices": "volume"
-        },
+        # "shimmed_volume_orders_012_pi": {
+        #     "order": "0,1,2",
+        #     "sig_loss": None,
+        #     "opt_meth": "pseudo_inverse",
+        #     "opt_cri": None,
+        #     "slices": "volume"
+        # },
         "shimmed_volume_orders_0123_linlsq": {
             "order": "0,1,2,3",
             "sig_loss": None,
@@ -77,48 +83,48 @@ def main():
             "opt_cri": None,
             "slices": "volume"
         },
-        "shimmed_volume_orders_0123_pi": {
-            "order": "0,1,2,3",
-            "sig_loss": None,
-            "opt_meth": "pseudo_inverse",
-            "opt_cri": None,
-            "slices": "volume"
-        },
-        "shimmed_slicewise_pi_sigloss": {
-            "order": "0,1",
-            "sig_loss": "0.1",
-            "opt_meth": "pseudo_inverse",
-            "opt_cri": None,
-            "slices": "auto"
-        },
-        "shimmed_slicewise_pi": {
-            "order": "0,1",
-            "sig_loss": None,
-            "opt_meth": "pseudo_inverse",
-            "opt_cri": None,
-            "slices": "auto"
-        },
-        "shimmed_slicewise_sigint_slsqp": {
-            "order": "0,1",
-            "sig_loss": "10",
-            "opt_meth": "slsqp",
-            "opt_cri": "rmse",
-            "slices": "auto"
-        },
-        "shimmed_slicewise_nosigint_slsqp": {
-            "order": "0,1",
-            "sig_loss": None,
-            "opt_meth": "slsqp",
-            "opt_cri": "rmse",
-            "slices": "auto"
-        },
-        "shimmed_slicewise_sigint_linlsq": {
-            "order": "0,1",
-            "sig_loss": "0.1",
-            "opt_meth": "lin_lsq",
-            "opt_cri": None,
-            "slices": "auto"
-        },
+        # "shimmed_volume_orders_0123_pi": {
+        #     "order": "0,1,2,3",
+        #     "sig_loss": None,
+        #     "opt_meth": "pseudo_inverse",
+        #     "opt_cri": None,
+        #     "slices": "volume"
+        # },
+        # "shimmed_slicewise_pi_sigloss": {
+        #     "order": "0,1",
+        #     "sig_loss": "0.1",
+        #     "opt_meth": "pseudo_inverse",
+        #     "opt_cri": None,
+        #     "slices": "auto"
+        # },
+        # "shimmed_slicewise_pi": {
+        #     "order": "0,1",
+        #     "sig_loss": None,
+        #     "opt_meth": "pseudo_inverse",
+        #     "opt_cri": None,
+        #     "slices": "auto"
+        # },
+        # "shimmed_slicewise_sigint_slsqp": {
+        #     "order": "0,1",
+        #     "sig_loss": "10",
+        #     "opt_meth": "slsqp",
+        #     "opt_cri": "rmse",
+        #     "slices": "auto"
+        # },
+        # "shimmed_slicewise_nosigint_slsqp": {
+        #     "order": "0,1",
+        #     "sig_loss": None,
+        #     "opt_meth": "slsqp",
+        #     "opt_cri": "rmse",
+        #     "slices": "auto"
+        # },
+        # "shimmed_slicewise_sigint_linlsq": {
+        #     "order": "0,1",
+        #     "sig_loss": "0.1",
+        #     "opt_meth": "lin_lsq",
+        #     "opt_cri": None,
+        #     "slices": "auto"
+        # },
         "shimmed_slicewise_nosigint_linlsq": {
             "order": "0,1",
             "sig_loss": None,
@@ -128,6 +134,9 @@ def main():
         },
     }
 
+    #################################################################
+    # Shim different scenarios and add metrics to metrics.csv
+    #################################################################
     fname_metrics = os.path.join(path_shimming, "metrics.csv")
     if not os.path.exists(fname_metrics) or redo:
         if not os.path.exists(os.path.dirname(fname_metrics)):
@@ -138,17 +147,34 @@ def main():
             fname_seg = os.path.join(path_data, config["preprocess_dir"]["main_dir"].format(ID), config["preprocess_dir"]["anat_seg"], f"sub-{ID}_t2star_seg.nii.gz")
             fname_anat = os.path.join(path_data, f"sub-{ID}", "anat", f"sub-{ID}_T2star.nii.gz")
             fname_mask_25 = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_mask_25.nii.gz")
-            fname_mask_40 = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_mask_40.nii.gz")
+            fname_mask_100 = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_mask_100.nii.gz")
 
-            if not os.path.exists(os.path.dirname(fname_mask_40)):
-                os.makedirs(os.path.dirname(fname_mask_40), exist_ok=True)
+            if not os.path.exists(os.path.dirname(fname_mask_100)):
+                os.makedirs(os.path.dirname(fname_mask_100), exist_ok=True)
 
             # Create fmap and shim masks
             if not os.path.exists(fname_mask_25) or redo:
                 cmd = f"sct_create_mask -i {fname_anat} -p centerline,{fname_seg} -size 25 -o {fname_mask_25}"
                 subprocess.run(cmd, shell=True, check=True)
-            if not os.path.exists(fname_mask_40) or redo:
-                cmd = f"sct_create_mask -i {fname_anat} -p centerline,{fname_seg} -size 40 -o {fname_mask_40}"
+            if not os.path.exists(fname_mask_100) or redo:
+                cmd = f"sct_create_mask -i {fname_anat} -p centerline,{fname_seg} -size 100 -o {fname_mask_100}"
+                subprocess.run(cmd, shell=True, check=True)
+
+            # Use total spine seg segmentation
+            fname_total_spine_seg = os.path.join(path_data, config["preprocess_dir"]["main_dir"].format(ID), "anat", "sct_deepseg_totalspineseg", f"sub-{ID}_T2star_totalspineseg_all.nii.gz")
+            nii_totspineseg = nib.load(fname_total_spine_seg)
+            mask = nii_totspineseg.get_fdata()
+            mask[mask == 0] = 1
+            mask[mask == 50] = 0
+            mask[mask > 1] = 1
+            fname_mask_no_vert = os.path.join(path_shimming, f"sub-{ID}", f"mask_totspineseg.nii.gz")
+            nib.Nifti1Image(mask, nii_totspineseg.affine, header=nii_totspineseg.header).to_filename(fname_mask_no_vert)
+
+            if mask_vert:
+                # Remove to show with verta
+                cmd = f"st_image logical-and {fname_mask_no_vert} {fname_mask_25} -o {fname_mask_25}"
+                subprocess.run(cmd, shell=True, check=True)
+                cmd = f"st_image logical-and {fname_mask_no_vert} {fname_mask_100} -o {fname_mask_100}"
                 subprocess.run(cmd, shell=True, check=True)
 
             fname_phase = os.path.join(path_data, f"sub-{ID}", "fmap", f"sub-{ID}_phasediff.nii.gz")
@@ -156,7 +182,7 @@ def main():
             fname_fmap = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_fieldmap.nii.gz")
 
             if not os.path.exists(fname_fmap) or redo:
-                cmd = ["st_prepare_fieldmap", fname_phase, "--mag", fname_mag, "--unwrapper", "prelude", "--gaussian-filter", "true", "--sigma", "1", "--mask", fname_mask_40, "-o", fname_fmap]
+                cmd = ["st_prepare_fieldmap", fname_phase, "--mag", fname_mag, "--unwrapper", "prelude", "--gaussian-filter", "true", "--sigma", "1", "--mask", fname_mask_100, "-o", fname_fmap]
                 subprocess.run(" ".join(cmd), shell=True, check=True)
 
             fname_target = glob.glob(os.path.join(path_data, f"sub-{ID}", "func", f"sub-{ID}_*.nii.gz"))[0]
@@ -188,7 +214,6 @@ def main():
                     print("Running command: " + " ".join(cmd))
                     subprocess.run(" ".join(cmd), shell=True, check=True)
 
-
             # Extract data from orig fmap
             std, rmse = get_metrics_from_fmap(fname_fmap, fname_mask_25, fname_target)
 
@@ -216,6 +241,122 @@ def main():
         # Save the dataframe to a csv file
         df.to_csv(fname_metrics, index=False)
 
+    plot_exp = ['baseline',
+                'shimmed_volume_orders_012_linlsq',
+                'shimmed_volume_orders_0123_linlsq',
+                'shimmed_slicewise_nosigint_linlsq']
+    plot_labels = ['shimBase (orders 0, 1, 2)',
+                   'shimVolume (orders 0, 1, 2)',
+                   'shimVolume (orders 0, 1, 2, 3)',
+                   'shimSlice (orders 0, 1)']
+
+    #################################################################
+    # Show representative participant before and after simulated shim
+    #################################################################
+    # Show everything in the field map space
+    # for ID in IDs:
+    for ID in ["099",]:
+        fname_anat = os.path.join(path_data, f"sub-{ID}", "anat", f"sub-{ID}_T2star.nii.gz")
+        fname_mask_25 = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_mask_25.nii.gz")
+        fname_mask_100 = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_mask_100.nii.gz")
+        fname_fmap = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_fieldmap.nii.gz")
+        fname_target = glob.glob(os.path.join(path_data, f"sub-{ID}", "func", f"sub-{ID}_*.nii.gz"))[0]
+
+        nii_anat = nib.load(fname_anat)
+        nii_mask_25 = nib.load(fname_mask_25)
+        nii_mask_100 = nib.load(fname_mask_100)
+        nii_fmap = nib.load(fname_fmap)
+        nii_target = nib.load(fname_target)
+        nii_target_3d = nib.Nifti1Image(nii_target.get_fdata()[..., 0], nii_target.affine, header=nii_target.header)
+
+        nii_seg_epi_space = resample_from_to(nii_mask_25, nii_target_3d)
+        nii_seg_fmap_space = resample_from_to(nii_seg_epi_space, nii_fmap)
+        nii_seg100_epi_space = resample_from_to(nii_mask_100, nii_target_3d)
+        nii_seg100_fmap_space = resample_from_to(nii_seg100_epi_space, nii_fmap)
+        nii_anat_fmap_space = resample_from_to(nii_anat, nii_fmap)
+        data_fmap = nii_fmap.get_fdata()
+        slices_to_show = []
+
+        x_min, x_max, y_min, y_max, z_min, z_max = get_bounds_to_zoom_in(nii_seg_fmap_space.get_fdata(), [5, 5, 2])
+        z_min += 1
+        y_min += 1
+        baseline_fmap_zoomed = data_fmap[x_min:x_max, y_min:y_max, z_min:z_max]
+        slices_to_show.append(baseline_fmap_zoomed[baseline_fmap_zoomed.shape[0] // 2, :, :])
+        x_mina, x_maxa, y_mina, y_maxa, z_mina, z_maxa = get_bounds_to_zoom_in(nii_seg_fmap_space.get_fdata(), [5, 5, 2])
+        z_mina += 1
+        y_mina += 1
+        anat_zoomed = nii_anat_fmap_space.get_fdata()[x_mina:x_maxa, y_mina:y_maxa, z_mina:z_maxa]
+        anat_sag_slice = anat_zoomed[anat_zoomed.shape[0] // 2, :, :]
+
+        seg = nii_seg_fmap_space.get_fdata()
+        seg_zoomed = seg[x_min:x_max, y_min:y_max, z_min:z_max]
+        seg_sag_slice = seg_zoomed[seg_zoomed.shape[0] // 2, :, :]
+        seg_zoomed_anat = seg[x_mina:x_maxa, y_mina:y_maxa, z_mina:z_maxa]
+        seg_sag_slice_anat = seg_zoomed_anat[anat_zoomed.shape[0] // 2, :, :]
+
+        # Plot all 4 scenarios (baseline, vol012, vol0123, slice01)
+        for i in range(1, 4):
+            fname_fmap_shimmed = os.path.join(path_shimming, f"sub-{ID}", plot_exp[i], "fieldmap_calculated_shim.nii.gz")
+            nii_fmap_shimmed = nib.load(fname_fmap_shimmed)
+            if mask_vert:
+                # Multiply by mask to remove vertebrae
+                data_fmap_shimmed = nii_fmap_shimmed.get_fdata() * nii_seg100_fmap_space.get_fdata()
+            else:
+                data_fmap_shimmed = nii_fmap_shimmed.get_fdata()
+            shimmed_fmap_zoomed = data_fmap_shimmed[x_min:x_max, y_min:y_max, z_min:z_max]
+            slices_to_show.append(shimmed_fmap_zoomed[shimmed_fmap_zoomed.shape[0] // 2, :, :])
+
+        # vmin = min(a_slice.min() for a_slice in slices_to_show)
+        # vmax = max(a_slice.max() for a_slice in slices_to_show)
+        vmin, vmax = (-100, 100)
+        print(f"vmin: {vmin}, vmax: {vmax}")
+        fig = plt.figure(figsize=(8, 4))
+        fontsize = 7
+        width_ratios = [1.0 * anat_sag_slice.shape[0] / slices_to_show[0].shape[0 ], 0.05, 1.0, 0.05, 1.0, 0.05, 1.0, 0.05, 1.0875]
+        gs = gridspec.GridSpec(nrows=1, ncols=9, width_ratios=width_ratios, figure=fig, hspace=0, wspace=0)
+        for i in range(0, 5):
+            ax = fig.add_subplot(gs[0, 2*i])
+            if i == 0:
+                delta = anat_sag_slice.max() - anat_sag_slice.min()
+                if ID == "099":
+                    vmin_anat = -26
+                    vmax_anat = 171
+                else:
+                    vmin_anat = anat_sag_slice.min()
+                    vmax_anat = anat_sag_slice.max() - (0.2 * delta)
+                ax.imshow(np.rot90(anat_sag_slice, k=1), cmap='gray', vmin=vmin_anat, vmax=vmax_anat)
+                ax.contour(np.rot90(seg_sag_slice_anat, k=1), levels=[0.5], colors="red", linewidths=1.5)
+                ax.set_title("Anatomical", fontsize=fontsize-1, weight='bold')
+                if ID == "099":
+                    # Add top and bottom vertebrae levels on the anatomical image
+                    ax.text(0.1, 0.97, "C3", color='white', fontsize=fontsize-1, weight='bold', ha='center', va='top', transform=ax.transAxes)
+                    ax.text(0.1, 0.03, "T1", color='white', fontsize=fontsize-1, weight='bold', ha='center', va='bottom', transform=ax.transAxes)
+            else:
+                im = ax.imshow(np.rot90(slices_to_show[i - 1], k=1), cmap='jet', vmin=vmin, vmax=vmax)
+                ax.contour(np.rot90(seg_sag_slice, k=1), levels=[0.5], colors="red", linewidths=1.5)
+                ax.set_title(plot_labels[i - 1], fontsize=fontsize-1, weight='bold')
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        # Create a colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        cbar = fig.colorbar(im, cax=cax)
+        cbar.ax.tick_params(labelsize=fontsize)
+        cbar.set_label('Hz', fontsize=fontsize, loc= 'center', rotation=0)
+        cbar.ax.locator_params(nbins=5)
+        cbar.update_ticks()
+        plt.tight_layout()
+        fig.tight_layout()
+        fname_fmap_comparison = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_fmap_comparison.png")
+        fig.savefig(fname_fmap_comparison, dpi=600)
+        if ID == "099":
+            shutil.copy(fname_fmap_comparison, os.path.join(path_figures, f"fmap_comparison.png"))
+
+
+    #################################################################
+    # Boxplot of different scenarios
+    #################################################################
     df = pd.read_csv(fname_metrics)
     metrics = {
         "std": "STD (Hz)",
@@ -231,8 +372,6 @@ def main():
         fig = plt.figure(figsize=(15, 5))
         fig.subplots_adjust(left=0.01, right=0.99, top=0.92, bottom=0.1)
 
-        plot_exp = ['baseline', 'shimmed_volume_orders_012_linlsq', 'shimmed_volume_orders_0123_linlsq', 'shimmed_slicewise_nosigint_linlsq']
-        plot_labels = ['shimBase (orders 0, 1, 2)', 'shimVolume (orders 0, 1, 2)', 'shimVolume (orders 0, 1, 2, 3)', 'shimSlice (orders 0, 1)']
         df_sub = df[(df['Experiment'] == 'baseline') | (df['Experiment'] == 'shimmed_volume_orders_012_linlsq') | (df['Experiment'] == 'shimmed_volume_orders_0123_linlsq') | (df['Experiment'] == 'shimmed_slicewise_nosigint_linlsq')]
 
         fname_stats = os.path.join(path_shimming, f"stats_{metric}.csv")
@@ -287,6 +426,35 @@ def get_metrics_from_fmap(fname_fmap, fname_seg, fname_target):
     std = np.ma.std(ma_fmap)
     rmse = np.ma.sqrt(np.ma.mean(ma_fmap ** 2))
     return std, rmse
+
+
+def get_bounds_to_zoom_in(mask, margins):
+    """ Get the x and y bounds that would allow to zoom in on the valid voxels in the mask, with a margin around them.
+     The bounds are the same for all slices.
+
+    Args:
+        mask (np.array): 3d array filled from 0 to 1.
+        margins (tuple): Number of voxels to add around the valid voxels in each dimension (x, y, z).
+
+    Returns:
+        tuple: x_min, x_max, y_min, y_max, z_min, z_max
+    """
+    valid_voxels = np.any(mask != 0, axis=2)
+    if np.any(valid_voxels):
+        x_idx, y_idx = np.where(valid_voxels)
+        x_min, x_max = max(x_idx.min() - margins[0], 0), min(x_idx.max() + margins[0], mask.shape[0] - 1)
+        y_min, y_max = max(y_idx.min() - margins[1], 0), min(y_idx.max() + margins[1], mask.shape[1] - 1)
+    else:
+        x_min, x_max, y_min, y_max = 0, mask.shape[0], 0, mask.shape[1]
+
+    valid_voxelsz = np.any(mask != 0, axis=0)
+    if np.any(valid_voxelsz):
+        _, z_idx = np.where(valid_voxelsz)
+        z_min, z_max = max(z_idx.min() - margins[2], 0), min(z_idx.max() + margins[2], mask.shape[2] - 1)
+    else:
+        z_min, z_max = 0, mask.shape[2]
+
+    return x_min, x_max, y_min, y_max, z_min, z_max
 
 
 if __name__ == "__main__":
