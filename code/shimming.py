@@ -190,7 +190,7 @@ def main():
             for exp in exps.keys():
                 path_output = os.path.join(path_shimming, f"sub-{ID}", exp)
 
-                if not os.path.exists(os.path.join(path_output, "fieldmap_calculated_shim.nii.gz")) or redo:
+                if not os.path.exists(os.path.join(path_output, "fieldmap_calculated_shim_masked.nii.gz")) or redo:
                     # Shim
                     cmd = ["st_b0shim dynamic",
                             "--scanner-coil-order", exps[exp]["order"],
@@ -200,9 +200,10 @@ def main():
                             "--mask-dilation-kernel-size", "5",
                             "--optimizer-method", exps[exp]["opt_meth"],
                             "--slices", exps[exp]["slices"],
-                            # "--output-file-format-scanner", "slicewise-hrd",
+                            "--output-file-format-scanner", "slicewise-coil",
                             "--output-value-format", "delta",
-                            "--output", path_output]
+                            "--output", path_output,
+                            "--verbose", "debug"]
 
                     if exps[exp]["sig_loss"] is not None:
                         cmd.append("--weighting-signal-loss")
@@ -227,9 +228,9 @@ def main():
 
             # Create panda dataframe with different metrics
             for exp in exps.keys():
-                fname_fmap_shimmed = os.path.join(path_shimming, f"sub-{ID}", exp, "fieldmap_calculated_shim.nii.gz")
+                fname_fmap_shimmed = os.path.join(path_shimming, f"sub-{ID}", exp, "fieldmap_calculated_shim_masked.nii.gz")
                 # Extract data from orig fmap
-                std, rmse = get_metrics_from_fmap(fname_fmap_shimmed, fname_seg, fname_target)
+                std, rmse = get_metrics_from_fmap(fname_fmap_shimmed, fname_mask_25, fname_target)
                 data = {
                     "IDs": ID,
                     "Experiment": exp,
@@ -296,7 +297,7 @@ def main():
 
         # Plot all 4 scenarios (baseline, vol012, vol0123, slice01)
         for i in range(1, 4):
-            fname_fmap_shimmed = os.path.join(path_shimming, f"sub-{ID}", plot_exp[i], "fieldmap_calculated_shim.nii.gz")
+            fname_fmap_shimmed = os.path.join(path_shimming, f"sub-{ID}", plot_exp[i], "fieldmap_calculated_shim_not_masked.nii.gz")
             nii_fmap_shimmed = nib.load(fname_fmap_shimmed)
             if mask_vert:
                 # Multiply by mask to remove vertebrae
@@ -411,6 +412,138 @@ def main():
 
     figs.combine_plots(os.path.join(path_figures, "shim_boxplots.png"), plots,
                        figsize=(5, 3), redo=True)
+
+    #################################################################
+    # Simulate movement
+    #################################################################
+    movements = []
+    for x in np.linspace(-20, 20, 5):
+        for y in np.linspace(-20, 20, 5):
+            for z in np.linspace(-20, 20, 5):
+                movements.append((x, y, z))
+
+    os.makedirs(os.path.join(path_shimming, "movement"), exist_ok=True)
+
+    # Rotations?
+    fname_dfmov = os.path.join(path_shimming, "movement", "dfmov.csv")
+    if os.path.exists(fname_dfmov):
+        df_mov = pd.read_csv(fname_dfmov)
+    else:
+        df_mov = pd.DataFrame(columns=["ID", "Experiment", "rmse", "std", "movement_x", "movement_y", "movement_z"])
+
+    for movement in movements:
+        for ID in IDs:
+            os.makedirs(os.path.join(path_shimming, "movement", f"sub-{ID}"), exist_ok=True)
+            fname_fmap = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_fieldmap.nii.gz")
+            fname_target = glob.glob(os.path.join(path_data, f"sub-{ID}", "func", f"sub-{ID}_*.nii.gz"))[0]
+            fname_mask_25 = os.path.join(path_shimming, f"sub-{ID}", f"sub-{ID}_mask_25.nii.gz")
+            fname_mask_25_moved = os.path.join(path_shimming, "movement", f"sub-{ID}", f"sub-{ID}_mask_25_moved.nii.gz")
+
+            nii_fmap = nib.load(fname_fmap)
+            nii_fmap_moved = apply_movement(nii_fmap, movement)
+            fname_fmap_moved = os.path.join(path_shimming, "movement", f"sub-{ID}", f"sub-{ID}_fieldmap_moved.nii.gz")
+            nii_fmap_moved.to_filename(fname_fmap_moved)
+            shutil.copy(fname_fmap.rsplit(".nii.gz")[0] + ".json", fname_fmap_moved.rsplit(".nii.gz")[0] + ".json")
+
+            nii_mask_25 = nib.load(fname_mask_25)
+            nii_mask_25_moved = apply_movement(nii_mask_25, movement)
+            nib.save(nii_mask_25_moved, fname_mask_25_moved)
+
+            for exp in exps.keys():
+                # Look if an entry in df_mov is there
+                n_entries = ((df_mov['Experiment'] == exp) & (df_mov['ID'] == int(ID)) & (df_mov['movement_x'] == movement[0]) & (df_mov['movement_y'] == movement[1]) & (df_mov['movement_z'] == movement[2])).sum()
+                if n_entries == 1:
+                    continue
+                elif n_entries > 1:
+                    # Delete all rows except 1 that match the criteria
+                    print(f"Deleted {n_entries - 1} entries for ID {ID}, Experiment {exp}, Movement {movement}")
+                    df_mov = df_mov[~((df_mov['Experiment'] == exp) & (df_mov['ID'] == int(ID)) & (df_mov['movement_x'] == movement[0]) & (df_mov['movement_y'] == movement[1]) & (df_mov['movement_z'] == movement[2])) | (df_mov.index == df_mov[((df_mov['Experiment'] == exp) & (df_mov['ID'] == int(ID)) & (df_mov['movement_x'] == movement[0]) & (df_mov['movement_y'] == movement[1]) & (df_mov['movement_z'] == movement[2]))].index[0])]
+                    continue
+                path_output = os.path.join(path_shimming, "movement", f"sub-{ID}", exp)
+                fname_coefs_no_movement = os.path.join(path_shimming, f"sub-{ID}", exp, "coefs_coil0_Investigational_Device_7T_79017.txt")
+                # st_b0shim using fixed coef option
+                channels_per_order = {0: 1, 1: 3, 2: 5, 3: 4}
+                i = 0
+                off_channels = []
+                for order in exps[exp]["order"].split(','):
+                    for _ in range(channels_per_order[int(order)]):
+                        off_channels.append(str(i))
+                        i += 1
+
+                off_channels = ",".join(off_channels)
+                # Shim
+                # All channels are off, this is a trick to apply the shim coefficients without optimizing
+                cmd = ["st_b0shim dynamic",
+                       "--scanner-coil-order", exps[exp]["order"],
+                       "--fmap", fname_fmap_moved,
+                       "--target", fname_target,
+                       "--mask", fname_mask_25,
+                       "--mask-dilation-kernel-size", "5",
+                       "--optimizer-method", exps[exp]["opt_meth"],
+                       "--slices", exps[exp]["slices"],
+                       "--output-file-format-scanner", "slicewise-coil",
+                       "--output-value-format", "delta",
+                       "--off-channels", off_channels,
+                       "--off-channels-values", fname_coefs_no_movement,
+                       "--verbose", "debug",  # To output not masked calculated shim
+                       "--output", path_output]
+
+                if exps[exp]["sig_loss"] is not None:
+                    cmd.append("--weighting-signal-loss")
+                    cmd.append(exps[exp]["sig_loss"])
+                if exps[exp]["opt_cri"] is not None:
+                    cmd.append("--optimizer-criteria")
+                    cmd.append(exps[exp]["opt_cri"])
+
+                print("Running command: " + " ".join(cmd))
+                subprocess.run(" ".join(cmd), shell=True, check=True)
+                fname_fmap_shimmed = os.path.join(path_output, "fieldmap_calculated_shim_not_masked.nii.gz")
+                # Compute rmse and std in SC
+                std, rmse = get_metrics_from_fmap(fname_fmap_shimmed, fname_mask_25_moved, fname_target)
+
+                # Add to df
+                stats = {
+                    "ID": ID,
+                    "Experiment": exp,
+                    "rmse": rmse,
+                    "std": std,
+                    "movement_x": movement[0], "movement_y": movement[1], "movement_z": movement[2]
+                }
+                df_mov = pd.concat([df_mov, pd.DataFrame([stats])], ignore_index=True)
+            df_mov.to_csv(fname_dfmov, index=False)
+
+    # Once we have all the data, compute average rmse and std for in_plane and out of plane movement
+    for metric in metrics:
+        # Compute in-plane movement
+        df_mov["in_plane_movement"] = np.sqrt(df_mov["movement_x"]**2 + df_mov["movement_y"]**2)
+        df_mov["out_of_plane_movement"] = df_mov["movement_z"]
+        df_mov["total_movement"] = np.sqrt(df_mov["movement_x"]**2 + df_mov["movement_y"]**2 + df_mov["movement_z"]**2)
+
+        for movement_type in ["in_plane_movement", "out_of_plane_movement", "total_movement"]:
+            data_movement = df_mov.groupby(["Experiment", movement_type])[metric].mean()
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            for exp in exps.keys():
+                ax.plot(data_movement[exp].index.values, data_movement[exp].values)
+
+            # Add as reference hlines of the mean value obtained when no movement
+            # Maybe not necessary, since we will see it show up on the graph (we expect some sort of quadratic)
+
+            ax.set_xlabel(movement_type)
+            ax.set_ylabel(metric)
+            ax.set_title(f"Movement {metric}")
+            fig.savefig(os.path.join(path_shimming, "movement", f"{movement_type}_{metric}.png"))
+
+    # debug
+    # import pandas as pd
+    # import numpy as np
+    # df_mov = pd.read_csv("/Users/alexandredastous/Documents/School/Polytechnique/Master/project/spine_7T/spine_7t_fmri_data/derivatives/processing/shimming/movement/dfmov.csv")
+
+def apply_movement(nii, movement):
+    new_affine = nii.affine
+    new_affine[:3, 3] += movement
+    return nib.Nifti1Image(nii.get_fdata(), new_affine)
 
 
 def get_metrics_from_fmap(fname_fmap, fname_seg, fname_target):
