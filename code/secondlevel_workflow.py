@@ -90,7 +90,7 @@ for acq_name in config["design_exp"]["acq_names"]:
         task_name = selected_dirs[0].split("_")[0].split("-")[1]
         
         tsnr_id_fname.append(glob.glob(os.path.join(snr_path, selected_dirs[0], "*_moco_tsnr.nii.gz"))[0])
-        cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func',selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
+        cord_seg_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], config["preprocess_f"]["func_seg"].format(ID,selected_dirs[0],"")))[0])
         warp_file.append(glob.glob(os.path.join(preprocessing_dir.format(ID), 'func', selected_dirs[0], f"sub-{ID}_{selected_dirs[0]}_from-func_to_PAM50_mode-image_xfm.nii.gz"))[0])
 
     fname_avg_tsnr = tsnr_ana.generate_average_tsnr_in_pam50(
@@ -117,6 +117,114 @@ for acq_name in config["design_exp"]["acq_names"]:
                                   x_data="acq", x_order=["shimBase","shimSlice"],
                                   indiv_values=True,
                                   y_data=metric, redo=redo)
+
+######
+# Vertebrae signal analysis
+######
+print("Vertebrae signal analysis")
+# Signal increase between shimBase and shimSLice at 2 locations. Vertabrae and vertebrae interfaces
+# Create 2 masks, one for vetabrae and one for vertebrae interfaces. This comes from totalspineseg on anatomical. Using warping fields, bring to functional space of the individual acquisitions.
+# Then extract the mean signal in these masks for each subject and each acquisition.
+# Then look at how much improvement going from shimBase to shimSlice there is between the 2 masks.
+# Todo: Compute on task removed and denoised data
+import nibabel as nib
+import numpy as np
+from scipy.ndimage import binary_dilation
+from utils import extract_mean_within_mask, compute_SNR
+import pandas as pd
+path_vert_analysis = os.path.join(config["raw_dir"], "derivatives", "processing", "second_level", "vert_analysis")
+os.makedirs(path_vert_analysis, exist_ok=True)
+fname_template = os.path.join(config["code_dir"], "template", config["PAM50_t2"])
+df = pd.DataFrame(columns=["IDs", "task", "acq", "region", "tsnr"])
+for ID in IDs:
+    print(f"Processing ID: {ID}")
+    fname_total_spine_seg = os.path.join(preprocessing_dir.format(ID), 'anat', 'sct_deepseg_totalspineseg', f'sub-{ID}_T2star_totalspineseg_all.nii.gz')
+    # Warp to PAM50
+    fname_anat_to_pam50_warp = os.path.join(preprocessing_dir.format(ID), 'anat', "sct_register_to_template", f"sub-{ID}_from-anat_to-PAM50_mode-image_xfm.nii.gz")
+    fname_total_spine_seg_in_pam50 = os.path.join(path_vert_analysis, f"sub-{ID}", f"sub-{ID}_T2star_totalspineseg_in_pam50.nii.gz")
+    os.makedirs(os.path.dirname(fname_total_spine_seg_in_pam50), exist_ok=True)
+    if not os.path.exists(fname_total_spine_seg_in_pam50) or redo:
+        cmd_coreg = f"sct_apply_transfo -i {fname_total_spine_seg} -d {fname_template} -w {fname_anat_to_pam50_warp} -o {fname_total_spine_seg_in_pam50} -x nn"
+        os.system(cmd_coreg)
+
+    nii_total_spine_seg_in_pam50 = nib.load(fname_total_spine_seg_in_pam50)
+    # Put ones in slices where vertebrae interfaces are located
+    discs_in_pam50 = nii_total_spine_seg_in_pam50.get_fdata() > 60
+    for i_slice in range(discs_in_pam50.shape[2]):
+        if np.any(discs_in_pam50[..., i_slice]):
+            discs_in_pam50[..., i_slice] = 1
+    # dilate
+    discs_in_pam50 = binary_dilation(discs_in_pam50, iterations=1)
+    vert_in_pam50 = np.ones_like(discs_in_pam50).astype(int) - discs_in_pam50
+    nii_discs_in_pam50 = nib.Nifti1Image(discs_in_pam50, nii_total_spine_seg_in_pam50.affine, header=nii_total_spine_seg_in_pam50.header)
+    nii_vert_in_pam50 = nib.Nifti1Image(vert_in_pam50, nii_total_spine_seg_in_pam50.affine, header=nii_total_spine_seg_in_pam50.header)
+    fname_discs_in_pam50 = os.path.join(path_vert_analysis, f"sub-{ID}", f"sub-{ID}_T2star_discs_in_pam50.nii.gz")
+    fname_vert_in_pam50 = os.path.join(path_vert_analysis, f"sub-{ID}", f"sub-{ID}_T2star_vert_in_pam50.nii.gz")
+    nib.save(nii_discs_in_pam50, fname_discs_in_pam50)
+    nib.save(nii_vert_in_pam50, fname_vert_in_pam50)
+
+    # PAM50 to functional space
+    for acq_name in config["design_exp"]["acq_names"]:
+        snr_path = first_level_dir.format("snr", ID)
+        dirs = [d for d in os.listdir(snr_path) if os.path.isdir(os.path.join(snr_path, d))]
+        # Select rest folder if it exists otherwise take motor folder
+        rest_dirs = [d for d in dirs if "rest" in d and acq_name in d]
+        if len(rest_dirs) > 0:
+            selected_dirs = rest_dirs
+        else:
+            selected_dirs = [d for d in dirs if acq_name in d]
+        task_name = selected_dirs[0].split("_")[0].split("-")[1]
+
+        tag = f"task-{task_name}" + "_acq-" + acq_name
+        raw_func = sorted(glob.glob(os.path.join(config["raw_dir"], f'sub-{ID}', 'func', f'sub-{ID}_{tag}_*bold.nii.gz')))
+        func_file = raw_func[0]  # take only the first run
+        match = re.search(r"_?(run-\d+)", func_file)
+        run_name = "_" + match.group(1) if match else ""
+        fname_target_func = os.path.join(preprocessing_dir.format(ID), "func", tag, "sct_fmri_moco", f"sub-{ID}_{tag}{run_name}_bold_moco_mean.nii.gz")
+        fname_pam50_to_func_warp = os.path.join(preprocessing_dir.format(ID), "func", tag, f"sub-{ID}_{tag}_from-PAM50_to_func_mode-image_xfm.nii.gz")
+        fname_discs_in_func = os.path.join(path_vert_analysis, f"sub-{ID}", f"sub-{ID}_{tag}_discs.nii.gz")
+        if not os.path.exists(fname_discs_in_func) or redo:
+            cmd_coreg = f"sct_apply_transfo -i {fname_discs_in_pam50} -d {fname_target_func} -w {fname_pam50_to_func_warp} -o {fname_discs_in_func} -x nn"
+            os.system(cmd_coreg)
+
+        fname_vert_in_func = os.path.join(path_vert_analysis, f"sub-{ID}", f"sub-{ID}_{tag}_vert.nii.gz")
+        if not os.path.exists(fname_vert_in_func) or redo:
+            cmd_coreg = f"sct_apply_transfo -i {fname_vert_in_pam50} -d {fname_target_func} -w {fname_pam50_to_func_warp} -o {fname_vert_in_func} -x nn"
+            os.system(cmd_coreg)
+
+        # Logical and with functional segmentation to get the spinal cord, not just the slice
+        fname_seg = os.path.join(preprocessing_dir.format(ID), "func", tag, f"sub-{ID}_{tag}_bold_moco_mean_seg.nii.gz")
+        nii_seg = nib.load(fname_seg)
+        nii_discs = nib.load(fname_discs_in_func)
+        nii_vert = nib.load(fname_vert_in_func)
+        discs = np.logical_and(nii_discs.get_fdata() > 0, nii_seg.get_fdata() > 0)
+        vert = np.logical_and(nii_vert.get_fdata() > 0, nii_seg.get_fdata() > 0)
+        nii_discs_seg = nib.Nifti1Image(discs.astype(int), nii_seg.affine, header=nii_seg.header)
+        nii_vert_seg = nib.Nifti1Image(vert.astype(int), nii_seg.affine, header=nii_seg.header)
+        fname_discs = os.path.join(path_vert_analysis, f"sub-{ID}", f"sub-{ID}_{tag}_discs_seg.nii.gz")
+        fname_vert = os.path.join(path_vert_analysis, f"sub-{ID}", f"sub-{ID}_{tag}_vert_seg.nii.gz")
+        nib.save(nii_discs_seg, fname_discs)
+        nib.save(nii_vert_seg, fname_vert)
+
+        ## Compute metrics in this mask
+        # tsnr
+        fname_tsnr = os.path.join(config["raw_dir"], "derivatives", "processing", "first_level", "snr", f"sub-{ID}", tag, f"sub-{ID}_{tag}{run_name}_bold_moco_tsnr.nii.gz")
+        disc_tsnr = extract_mean_within_mask(fname_tsnr, fname_discs)
+        vert_tsnr = extract_mean_within_mask(fname_tsnr, fname_vert)
+
+        # ssnr
+        disc_ssnr = compute_SNR(fname_target_func, fname_discs)
+        vert_ssnr = compute_SNR(fname_target_func, fname_vert)
+
+        df2 = pd.DataFrame({"IDs": [ID], "task": [task_name], "acq": [acq_name], "region": ["discs"], "tsnr": [disc_tsnr], "ssnr": [disc_ssnr]})
+        df = pd.concat([df, df2], ignore_index=True)
+        df2 = pd.DataFrame({"IDs": [ID], "task": [task_name], "acq": [acq_name], "region": ["vert"], "tsnr": [vert_tsnr], "ssnr": [vert_ssnr]})
+        df = pd.concat([df, df2], ignore_index=True)
+
+    fname_metrics = os.path.join(path_vert_analysis, "stats.csv")
+df.to_csv(fname_metrics)
+print(df.groupby(["acq", "region"])["tsnr"].mean())
+print(df.groupby(["acq", "region"])["ssnr"].mean())
 
 #------------------------------------------------------------------
 #------ Compute average FD
