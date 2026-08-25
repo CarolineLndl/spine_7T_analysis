@@ -700,7 +700,7 @@ class Figures_main:
         
         return output_fname
 
-    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, show_pvalues_if_sig=True,plot_xlabels=True, redo=False, x_labels=None, stats_height_scaling=0.97):
+    def boxplots(self, csv_file=None,df=None,output_fname=None, stats_file=None,x_data=None, x_order=None, y_data=None, hue=None, hue_order=None,specify_y_label=None,output_dir=None, color=None, indiv_values=False,indiv_hue=None, indiv_color=None, plot_legend=True, output_tag='', ymin=6, ymax=17,height=2.5,aspect=0.6, invers_axes=False,indiv=False, group=False, show_pvalues_if_sig=True,plot_xlabels=True, redo=False, x_labels=None, stats_height_scaling=0.97, legend_ha="right", add_labels=None):
         """
         Create matrix of correlation boxplots with matching box outline and whisker colors.
         """
@@ -886,7 +886,14 @@ class Figures_main:
                             sig_annotation,fontname="Arial",
                             ha='center', va='bottom',
                             fontsize=8, color=bracket_color)
-            
+
+            if add_labels is not None:
+                deltay = ymax - ymin
+                for i_add_label, add_label in enumerate(add_labels):
+                    ax.text(i_add_label,  ymin - (deltay * 0.025), add_label,fontname="Arial",
+                                    ha='center', va='bottom',
+                                    fontsize=8, color="#777777")
+
             ax.set_xlabel('')
             y_label=specify_y_label if specify_y_label else y_data
 
@@ -905,7 +912,7 @@ class Figures_main:
                 g.add_legend()
             else:
                 plt.legend([],[], frameon=False)
-            
+
             ax.set_xticks(range(len(df[x_data_f].unique())))
             #if plot_xlabels==True:
             if x_labels:
@@ -915,7 +922,7 @@ class Figures_main:
             else:
                 labels = df[x_data_f].unique()
             ax.set_xticklabels(labels,
-                    rotation=45, fontsize=10, fontweight='bold', fontname="Arial", ha='right')
+                    rotation=45, fontsize=10, fontweight='bold', fontname="Arial", ha=legend_ha)
             #else:
              #   ax.set_xticklabels(['' ] * len(df[x_data_f].unique()))
             
