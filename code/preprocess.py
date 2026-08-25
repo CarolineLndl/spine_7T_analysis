@@ -498,7 +498,7 @@ class Preprocess_Sc:
             o_manual = os.path.join(self.manual_dir, f"sub-{ID}", "anat", os.path.basename(o_img))
 
         # --- Run segmentation ----------------------------------------------------------------------------
-        if not (os.path.exists(o_img) or os.path.exists(o_manual)) or redo:
+        if (not os.path.exists(o_img)) or redo:
             print(f">>>>> Segmentation is running for {img_type} image of sub-{ID}...")
 
             if img_type=="func":
