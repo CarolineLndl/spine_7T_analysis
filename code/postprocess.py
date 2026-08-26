@@ -832,9 +832,10 @@ class EpiComparison:
                 axs[idx].axis('off')
                 axs[idx].set_aspect('equal', adjustable='box')
 
-                template_slice_idx = self.func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1],
+                template_slice_idx = func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1],
                                                                        fname_warp_from_pam50_to_func_baseline,
-                                                                       fname_baseline, ID, task, name_baseline)
+                                                                       fname_baseline, ID, task, name_baseline,
+                                                                  self.redo, self.path_fig_data, self.config)
                 spinal_level = template_slice_to_spinal_level(template_slice_idx)[1]
                 axs[idx].text(0.15, 0.85, spinal_level, color='white', fontsize=4, fontweight='bold',
                                        ha='center', va='center', transform=axs[idx].transAxes)
@@ -1092,7 +1093,8 @@ class EpiComparison:
                         axs_slicewise[idx].spines['top'].set_visible(False)
                         axs_slicewise[idx].spines['top'].set_visible(False)
 
-                    template_slice_idx = self.func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1], fname_warp_from_pam50_to_func_baseline, fname_baseline, ID, task, name_baseline)
+                    template_slice_idx = func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1], fname_warp_from_pam50_to_func_baseline, fname_baseline, ID, task, name_baseline,
+                                                                  self.redo, self.path_fig_data, self.config)
                     spinal_level = template_slice_to_spinal_level(template_slice_idx)[1]
                     axs_baseline[idx].text(0.1, 0.9, spinal_level, color='white', fontsize=5, fontweight='bold', ha='center', va='center', transform=axs_baseline[idx].transAxes)
 
@@ -1133,7 +1135,8 @@ class EpiComparison:
 
                 for idx, slice_idx in enumerate(range(n_max_slices - 1, -1, -show_slice_factor)):
                     # Use last baseline for reference func
-                    slice_idx = self.func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1], fname_warp_from_pam50_to_func_baseline, fname_baseline, ID, task, name_baseline)
+                    slice_idx = func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1], fname_warp_from_pam50_to_func_baseline, fname_baseline, ID, task, name_baseline,
+                                                                  self.redo, self.path_fig_data, self.config)
 
                     com = center_of_mass(mask_template_seg[:, :, slice_idx])
 
@@ -1280,38 +1283,186 @@ class EpiComparison:
                 axs_slicewise[idx].axis('off')
                 axs_slicewise[idx].set_aspect('equal', adjustable='box')
 
-                template_slice_idx = self.func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1], fname_warp_from_pam50_to_func_baseline, fname_baseline, ID, task, name_baseline)
+                template_slice_idx = func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1], fname_warp_from_pam50_to_func_baseline, fname_baseline, ID, task, name_baseline,
+                                                                  self.redo, self.path_fig_data, self.config)
                 spinal_level = template_slice_to_spinal_level(template_slice_idx)[1]
                 axs_baseline[idx].text(0.1, 0.9, spinal_level, color='white', fontsize=5, fontweight='bold', ha='center', va='center', transform=axs_baseline[idx].transAxes)
 
             self.fname_fig_epi_comparison = os.path.join(self.path_fig_epi_comparison, f"sub-{ID}_epi_comparison.png")
             fig.savefig(self.fname_fig_epi_comparison, dpi=2000)
 
-    def func_slice_to_template_slice(self, func_slice, com1, com2, fname_warp_template_to_func, fname_moco_mean, ID, task, acq_name):
-        name = f"sub-{ID}_task-{task}_acq-{acq_name}"
 
-        fname_slice_temp = os.path.join(self.path_fig_data, "template_slice.nii.gz")
+def func_slice_to_template_slice(func_slice, com1, com2, fname_warp_template_to_func, fname_moco_mean, ID, task, acq_name, redo, path_output, config):
+    name = f"sub-{ID}_task-{task}_acq-{acq_name}"
 
-        if not os.path.exists(fname_slice_temp) or self.redo:
-            # Take the template, overwrite it with the slice number, and warp it to func space.
-            fname_template = os.path.join(self.config["code_dir"], "template", self.config["PAM50_t2"])
-            nii_template = nib.load(fname_template)
-            data = nii_template.get_fdata()
-            for i_slice in range(nii_template.shape[2]):
-                data_template_slice = np.full_like(data[..., 0], i_slice)
-                data[:, :, i_slice] = data_template_slice
+    fname_slice_temp = os.path.join(path_output, "template_slice.nii.gz")
 
-            nii_slice_temp = nib.Nifti1Image(data.astype(np.int16), affine=nii_template.affine, header=nii_template.header)
-            nib.save(nii_slice_temp, fname_slice_temp)
+    if not os.path.exists(fname_slice_temp) or redo:
+        # Take the template, overwrite it with the slice number, and warp it to func space.
+        fname_template = os.path.join(config["code_dir"], "template", config["PAM50_t2"])
+        nii_template = nib.load(fname_template)
+        data = nii_template.get_fdata()
+        for i_slice in range(nii_template.shape[2]):
+            data_template_slice = np.full_like(data[..., 0], i_slice)
+            data[:, :, i_slice] = data_template_slice
 
-        fname_template_slice_in_func = os.path.join(self.path_fig_data, f"sub-{ID}", f"{name}_template_slice_in_func.nii.gz")
-        if not os.path.exists(fname_template_slice_in_func) or self.redo:
-            cmd_coreg = f"sct_apply_transfo -i {fname_slice_temp} -d {fname_moco_mean} -w {fname_warp_template_to_func} -o {fname_template_slice_in_func}"
-            os.system(cmd_coreg)
+        nii_slice_temp = nib.Nifti1Image(data.astype(np.int16), affine=nii_template.affine, header=nii_template.header)
+        nib.save(nii_slice_temp, fname_slice_temp)
 
-        nii_slice_func = nib.load(fname_template_slice_in_func)
-        slice_temp = int(nii_slice_func.get_fdata()[int(com1), int(com2), func_slice])
-        return slice_temp
+    fname_template_slice_in_func = os.path.join(path_output, f"sub-{ID}", f"{name}_template_slice_in_func.nii.gz")
+    if not os.path.exists(fname_template_slice_in_func) or redo:
+        cmd_coreg = f"sct_apply_transfo -i {fname_slice_temp} -d {fname_moco_mean} -w {fname_warp_template_to_func} -o {fname_template_slice_in_func}"
+        os.system(cmd_coreg)
+
+    nii_slice_func = nib.load(fname_template_slice_in_func)
+    slice_temp = int(nii_slice_func.get_fdata()[int(com1), int(com2), func_slice])
+    return slice_temp
+
+
+class SegmentationComparison:
+    def __init__(self, config, IDs, redo):
+        self.IDs = IDs
+        self.config = config
+        self.redo = redo
+
+        self.path_main_fig = os.path.join(config["raw_dir"], config["figures_dir"]["main_dir"])
+        self.path_fig_seg_comparison = os.path.join(self.path_main_fig, "segmentation_comparison")
+        os.makedirs(self.path_fig_seg_comparison, exist_ok=True)
+        self.path_fig_data = os.path.join(self.path_fig_seg_comparison, "data")
+        os.makedirs(self.path_fig_data, exist_ok=True)
+
+    def create_figure(self):
+        show_slice_factor = 2
+        fig = plt.figure(figsize=(4.3, 5))
+        height_ratios = (0.03, 0.03 , 1)
+        width_ratios = (1, 0.05, 1, 0.05, 1)
+        gs_main = gridspec.GridSpec(3, 5, figure=fig, hspace=0, wspace=0, width_ratios=width_ratios, height_ratios=height_ratios)
+        title_fontsize = 7
+        shim_fontsize = 6
+        seg_fontsize = 5
+        for i_ID, ID in enumerate(["093","094","095"]):
+            gs_title = gs_main[0, i_ID * 2].subgridspec(1, 1)
+            ax_title = gs_title.subplots()
+            ax_title.axis('off')
+            ax_title.set_title(f"ID {ID}", fontsize=title_fontsize, fontweight='bold')
+
+            gs_shim = gs_main[1, i_ID * 2].subgridspec(1, 2)
+            ax_shim = gs_shim.subplots()
+            color_shim_base, color_shim_slice = "#ADA8A8", "#ED263F"
+            ax_shim[0].axis('off')
+            ax_shim[0].set_title(f"shimBase", fontsize=shim_fontsize, fontweight='bold', color=color_shim_base)
+            ax_shim[1].axis('off')
+            ax_shim[1].set_title(f"shimSlice", fontsize=shim_fontsize, fontweight='bold', color=color_shim_slice)
+
+            name_baseline = [a for a in self.config["design_exp"]["acq_names"] if "Base" in a][0]
+            name_slicewise = [a for a in self.config["design_exp"]["acq_names"] if "Slice" in a][0]
+
+            fname_baseline_manual_seg = os.path.join(self.config["raw_dir"], self.config["manual_dir"], f"sub-{ID}", "func", f"sub-{ID}_task-motor_acq-{name_baseline}_bold_moco_mean_seg.nii.gz")
+            if not os.path.exists(fname_baseline_manual_seg):
+                fname_baseline_manual_seg = os.path.join(self.config["raw_dir"], self.config["manual_dir"], f"sub-{ID}", "func", f"sub-{ID}_task-motor_acq-{name_baseline}_run-01_bold_moco_mean_seg.nii.gz")
+            fname_slicewise_manual_seg = os.path.join(self.config["raw_dir"], self.config["manual_dir"], f"sub-{ID}", "func", f"sub-{ID}_task-motor_acq-{name_slicewise}_bold_moco_mean_seg.nii.gz")
+            if not os.path.exists(fname_slicewise_manual_seg):
+                fname_slicewise_manual_seg = os.path.join(self.config["raw_dir"], self.config["manual_dir"], f"sub-{ID}", "func", f"sub-{ID}_task-motor_acq-{name_slicewise}_run-01_bold_moco_mean_seg.nii.gz")
+            fname_baseline_auto_seg = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_seg"].format(f"task-motor_acq-{name_baseline}"), f"sub-{ID}_task-motor_acq-{name_baseline}_bold_moco_mean_seg.nii.gz")
+            if not os.path.exists(fname_baseline_auto_seg):
+                fname_baseline_auto_seg = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_seg"].format(f"task-motor_acq-{name_baseline}"), f"sub-{ID}_task-motor_acq-{name_baseline}_run-01_bold_moco_mean_seg.nii.gz")
+            fname_slicewise_auto_seg = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_seg"].format(f"task-motor_acq-{name_slicewise}"), f"sub-{ID}_task-motor_acq-{name_slicewise}_bold_moco_mean_seg.nii.gz")
+            if not os.path.exists(fname_slicewise_auto_seg):
+                fname_slicewise_auto_seg = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_seg"].format(f"task-motor_acq-{name_slicewise}"), f"sub-{ID}_task-motor_acq-{name_slicewise}_run-01_bold_moco_mean_seg.nii.gz")
+            fname_baseline_moco_mean = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_moco"].format(f"task-motor_acq-{name_baseline}"), f"sub-{ID}_task-motor_acq-{name_baseline}_bold_moco_mean.nii.gz")
+            if not os.path.exists(fname_baseline_moco_mean):
+                fname_baseline_moco_mean = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_moco"].format(f"task-motor_acq-{name_baseline}"), f"sub-{ID}_task-motor_acq-{name_baseline}_run-01_bold_moco_mean.nii.gz")
+            fname_slicewise_moco_mean = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_moco"].format(f"task-motor_acq-{name_slicewise}"), f"sub-{ID}_task-motor_acq-{name_slicewise}_bold_moco_mean.nii.gz")
+            if not os.path.exists(fname_slicewise_moco_mean):
+                fname_slicewise_moco_mean = os.path.join(self.config["raw_dir"], self.config["preprocess_dir"]["main_dir"].format(ID), self.config["preprocess_dir"]["func_moco"].format(f"task-motor_acq-{name_slicewise}"), f"sub-{ID}_task-motor_acq-{name_slicewise}_run-01_bold_moco_mean.nii.gz")
+
+            nii_baseline_manual_seg = nib.load(fname_baseline_manual_seg)
+            nii_slicewise_manual_seg = nib.load(fname_slicewise_manual_seg)
+            nii_baseline_auto_seg = nib.load(fname_baseline_auto_seg)
+            nii_slicewise_auto_seg = nib.load(fname_slicewise_auto_seg)
+            nii_baseline_moco_mean = nib.load(fname_baseline_moco_mean)
+            nii_slicewise_moco_mean = nib.load(fname_slicewise_moco_mean)
+
+            n_slices = nii_baseline_moco_mean.shape[2]
+
+            vmin = min(nii_baseline_moco_mean.get_fdata().min(), nii_slicewise_moco_mean.get_fdata().min())
+            vmin += 0.3 * vmin
+            vmax = max(nii_baseline_moco_mean.get_fdata().max(), nii_slicewise_moco_mean.get_fdata().max())
+            vmax -= 0.3 * vmax
+
+            width_ratios = [1, 0.02, 1, 0.1, 1, 0.02, 1]
+            gs = gs_main[2, i_ID * 2].subgridspec(round(n_slices / show_slice_factor + 0.1), 7, hspace=0, wspace=0, width_ratios=width_ratios)
+            axs = gs.subplots()
+            axs[0, 0].set_title(f"Manual", fontsize=seg_fontsize, fontweight='bold')
+            axs[0, 2].set_title(f"Auto", fontsize=seg_fontsize, fontweight='bold')
+            axs[0, 4].set_title(f"Manual", fontsize=seg_fontsize, fontweight='bold')
+            axs[0, 6].set_title(f"Auto", fontsize=seg_fontsize, fontweight='bold')
+
+            range_slices = range(n_slices - 1, -1, -show_slice_factor)
+            for i_slice, slice_idx in enumerate(range_slices):
+                bound_lr = 16  # left-right bound
+                bound_ud = 16  # up-down bound
+
+                com_baseline = center_of_mass(nii_baseline_manual_seg.get_fdata()[:, :, slice_idx])
+                com_slicewise = center_of_mass(nii_slicewise_manual_seg.get_fdata()[:, :, slice_idx])
+
+                # Define cropping bounds
+                crop_x_baseline = slice(max(0, int(com_baseline[0] - bound_lr)),
+                                        min(nii_baseline_manual_seg.shape[0], int(com_baseline[0] + bound_lr)))
+                crop_y_baseline = slice(max(0, int(com_baseline[1] - bound_ud)),
+                                        min(nii_baseline_manual_seg.shape[1], int(com_baseline[1] + bound_ud)))
+
+                crop_x_slicewise = slice(max(0, int(com_slicewise[0] - bound_lr)),
+                                         min(nii_slicewise_manual_seg.shape[0], int(com_slicewise[0] + bound_lr)))
+                crop_y_slicewise = slice(max(0, int(com_slicewise[1] - bound_ud)),
+                                         min(nii_slicewise_manual_seg.shape[1], int(com_slicewise[1] + bound_ud)))
+
+                # Crop the images
+                cropped_baseline_auto_seg = nii_baseline_auto_seg.get_fdata()[crop_x_baseline, crop_y_baseline, slice_idx]
+                cropped_slicewise_auto_seg = nii_slicewise_auto_seg.get_fdata()[crop_x_slicewise, crop_y_slicewise, slice_idx]
+                cropped_baseline_manual_seg = nii_baseline_manual_seg.get_fdata()[crop_x_baseline, crop_y_baseline, slice_idx]
+                cropped_slicewise_manual_seg = nii_slicewise_manual_seg.get_fdata()[crop_x_slicewise, crop_y_slicewise, slice_idx]
+                cropped_baseline = nii_baseline_moco_mean.get_fdata()[crop_x_baseline, crop_y_baseline, slice_idx]
+                cropped_slicewise = nii_slicewise_moco_mean.get_fdata()[crop_x_slicewise, crop_y_slicewise, slice_idx]
+
+                axs[i_slice, 0].imshow(cropped_baseline.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
+                axs[i_slice, 0].imshow(np.ma.masked_where(cropped_baseline_manual_seg == 0, cropped_baseline_manual_seg).T, vmin=0, vmax=1, cmap='viridis', alpha=0.5, origin='lower')
+                axs[i_slice, 2].imshow(cropped_baseline.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
+                axs[i_slice, 2].imshow(np.ma.masked_where(cropped_baseline_auto_seg == 0, cropped_baseline_auto_seg).T, vmin=0, vmax=1.1, cmap='brg', alpha=0.5, origin='lower')
+                axs[i_slice, 4].imshow(cropped_slicewise.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
+                axs[i_slice, 4].imshow(np.ma.masked_where(cropped_slicewise_manual_seg == 0, cropped_slicewise_manual_seg).T, vmin=0, vmax=1, cmap='viridis', alpha=0.5, origin='lower')
+                axs[i_slice, 6].imshow(cropped_slicewise.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
+                axs[i_slice, 6].imshow(np.ma.masked_where(cropped_slicewise_auto_seg == 0, cropped_slicewise_auto_seg).T, vmin=0, vmax=1.1, cmap='brg', alpha=0.5, origin='lower')
+                for i in range(7):
+                    axs[i_slice, i].axis('off')
+                for i in range(4):
+                    axs[i_slice, i * 2].set_aspect('equal', adjustable='box')
+
+                path_epi_comp = os.path.join(self.path_main_fig, "epi_comparison", "data")
+                template_slice_idx = func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1],
+                                                                       None, None, ID, "motor", name_baseline,
+                                                                  self.redo, path_epi_comp, self.config)
+                spinal_level = template_slice_to_spinal_level(template_slice_idx)[1]
+                axs[i_slice, 0].text(0.15, 0.85, spinal_level, color='white', fontsize=3, fontweight='bold',
+                                       ha='center', va='center', transform=axs[i_slice, 0].transAxes)
+
+                # Add arrows:
+                highlight = {
+                    "093": [1,],
+                    "094": [1,],
+                    "095": [1,]
+                }
+                if ID in highlight and slice_idx in highlight[ID]:
+                    # Add an arrow pointing to a specific point
+                    axs[i_slice, 2].annotate(
+                        '',  # Empty text
+                        xy=(0.45, 0.45),  # Arrowhead location
+                        xytext=(0.02, 0.02),  # Arrow tail location
+                        xycoords='axes fraction',
+                        arrowprops=dict(arrowstyle="->", color="blue", lw=0.8),
+                    )
+
+        fig.savefig(os.path.join(self.path_main_fig, "fig_seg_comparison.png"), dpi=600)
 
 
 def template_slice_to_spinal_level(template_slice):
