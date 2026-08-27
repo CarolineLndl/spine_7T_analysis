@@ -249,7 +249,8 @@ class Figures_main:
     
     def plot_fmri_maps(self, i_fnames=None, output_fname=None, stat_min=2.3, stat_max=5,titles = ["shimBase", "shimSlice"],
                   background_fname=None, cbar_label='t-value', cmap="autumn", z_slices=None,
-                  mask_fname=None, underlay_fname=None, task_name=None, verbose=True, redo=False):
+                  mask_fname=None, underlay_fname=None, task_name=None, verbose=True, redo=False,
+                       arrows=None, ovals=None):
 
         if output_fname is None:
             raise ValueError("output_dir is empty")
@@ -307,6 +308,22 @@ class Figures_main:
                     print(f"warning: no suprathreshold voxels found for {titles[i]} (y={y_slice} coronal slice), skipping statmap overlay")
                 else:
                     im_cor = ax_cor.imshow(cor_slice, cmap=cmap, origin="lower", vmin=stat_min, vmax=stat_max, aspect="auto")
+
+                if i == len(i_fnames) - 1:
+                    if arrows is not None:
+                        for arrow in arrows:
+                            # Add an arrow pointing to a specific point
+                            ax_cor.annotate(
+                                '',  # Empty text
+                                xy=arrow[0],  # Arrowhead location
+                                xytext=arrow[1],  # Arrow tail location
+                                xycoords='axes fraction',
+                                arrowprops=dict(arrowstyle="->", color="orange", lw=1.5),
+                            )
+
+                    if ovals is not None:
+                        for oval in ovals:
+                            ax_cor.add_patch(oval)
                 
                 # dashed lines for z_slices ──────────────────────────────────────────
                 if z_slices is not None:

@@ -1,4 +1,4 @@
-    #!/usr/bin/env python
+#!/usr/bin/env python
 # coding: utf-8
 
 # # Spinal cord fMRI second level
@@ -12,6 +12,7 @@
 # Main imports ------------------------------------------------------------
 import re, json, sys, os, glob, argparse
 import pandas as pd
+from matplotlib.patches import Ellipse
 
 # Get the environment variable PATH_CODE
 path_code = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -126,7 +127,6 @@ print("Vertebrae signal analysis")
 # Create 2 masks, one for vetabrae and one for vertebrae interfaces. This comes from totalspineseg on anatomical. Using warping fields, bring to functional space of the individual acquisitions.
 # Then extract the mean signal in these masks for each subject and each acquisition.
 # Then look at how much improvement going from shimBase to shimSlice there is between the 2 masks.
-# Todo: Compute on task removed and denoised data
 import nibabel as nib
 import numpy as np
 from scipy.ndimage import binary_dilation
@@ -283,7 +283,7 @@ for cluster_corr in [0.01,0.001]:
                     run_name = match.group(1) if match else ""
 
                     i_fnames.append(glob.glob(os.path.join(first_level_dir.format('glm',ID), f"{tag}", f"*{tag}*{run_name}*trial_RH-rest*inTemplate.nii.gz"))[0])  # find the corresponding first-level file
-                
+
                 z_map_file = glm_ana.run_second_level_glm(i_fnames=i_fnames,
                                                                 mask_fname=common_mask_fname,
                                                                 task_name=tag,
@@ -300,7 +300,7 @@ for cluster_corr in [0.01,0.001]:
                 values_csv_pair[cluster_corr][vox_thr].append(values_csv)
 
                 print(metrics_csv_pair)
-                                                    
+
                 print("")
                 print(f'=== Second level done for : {tag}, cluster: {cluster_corr} vox: {vox_thr} ===', flush=True)
                 print("=========================================", flush=True)
@@ -308,10 +308,17 @@ for cluster_corr in [0.01,0.001]:
 #------------------------------------------------------------------
 #------ Plot group level tSNR and GLM
 #------------------------------------------------------------------
-# --- Plot tSNR --- 
+# --- Plot tSNR ---
+print("--- Plot tSNR --- ")
 i_fnames_tSNR_pair=[] 
 for acq_name in config["design_exp"]["acq_names"]:
     i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"), f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
+
+ovals = [
+    Ellipse(
+        (35, 25), 30, 30, angle=0, edgecolor="green", facecolor="none", lw=2
+    ),
+]
 
 tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_tsnr_avg_map.png"),
@@ -319,7 +326,8 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    stat_max=16,
                                    cmap='turbo',
                                    cbar_label='tSNR',
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo)
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=True,
+                                   ovals=ovals, arrows=(((0.3, 0.73), (0.05, 0.73)), ((0.3, 0.45), (0.05, 0.45)), ((0.3, 0.6), (0.05, 0.6))))
 
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
                       map_files=[tsnr_plot],
@@ -383,6 +391,7 @@ for cluster_corr in [0.01,0.001]:
 #------------------------------------------------------------------
 #------ compute test-retest reproductibility using ICC 
 #------------------------------------------------------------------
+print("--- Compute test-retest reproductibility using ICC --- ")
 
 # ----------  between shimSlice run01 vs run02 ---
 print("", flush=True)
@@ -445,7 +454,7 @@ print("", flush=True)
 print(f'=== ICC between sliceShim run-01 and run-02  done', flush=True)
 print("=========================================", flush=True)
 
-# ----------  betwen shimBase and shimSlice ---
+# ----------  between shimBase and shimSlice ---
 print("", flush=True)
 print(f'=== ICC between sliceShim and sliceBase  start', flush=True)
 print("=========================================", flush=True)
