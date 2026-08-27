@@ -326,8 +326,8 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    stat_max=16,
                                    cmap='turbo',
                                    cbar_label='tSNR',
-                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=True,
-                                   ovals=ovals, arrows=(((0.3, 0.73), (0.05, 0.73)), ((0.3, 0.45), (0.05, 0.45)), ((0.3, 0.6), (0.05, 0.6))))
+                                   background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo,
+                                   ovals=ovals, arrows=(((0.3, 0.42), (0.05, 0.42)), ((0.3, 0.6), (0.05, 0.6))))
 
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
                       map_files=[tsnr_plot],
