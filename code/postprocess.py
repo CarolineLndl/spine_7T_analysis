@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import pingouin as pg
-import warnings
+from nibabel.processing import resample_from_to
 
 # nilearn
 from nilearn.plotting import plot_design_matrix
@@ -969,7 +969,7 @@ class EpiComparison:
                     n_max_slices = nii_tmp.shape[2]
 
             width_ratios = []
-            [width_ratios.extend([1, 1, 0.09]) for _ in range(n_part)]
+            [width_ratios.extend([1, 1, 1, 0.09]) for _ in range(n_part)]
 
             if show_avg:
                 width_ratios.extend([1, 1])
@@ -979,13 +979,13 @@ class EpiComparison:
                 gs_main = gridspec.GridSpec(2, ((n_part + 1) * 2) + n_part, figure=fig, hspace=0, wspace=0, width_ratios=width_ratios, height_ratios=[0.001,1])
             else:
                 width_ratios = width_ratios[:-1]  # remove the last 0.1
-                fig = plt.figure(figsize=(2.15 * n_part, n_max_slices // show_slice_factor))
-                gs_main = gridspec.GridSpec(2, (n_part * 2) + (n_part -1), figure=fig, hspace=0, wspace=0, width_ratios=width_ratios, height_ratios=[0.001,1])
+                fig = plt.figure(figsize=(3.18 * n_part, n_max_slices // show_slice_factor))
+                gs_main = gridspec.GridSpec(2, (n_part * 3) + (n_part -1), figure=fig, hspace=0, wspace=0, width_ratios=width_ratios, height_ratios=[0.001,1])
 
             print("IDs to show in the figure:", ids_to_show, flush=True)
             for i_id, ID in enumerate(ids_to_show):
 
-                gs_title = gs_main[0, i_id * 3:(i_id + 1) * 3 - 1].subgridspec(1, 1)
+                gs_title = gs_main[0, i_id * 4:(i_id + 1) * 4 - 1].subgridspec(1, 1)
                 ax_title = gs_title.subplots()
                 ax_title.axis('off')
                 ax_title.set_title(f"ID {ID}", fontsize=12, fontweight='bold')
@@ -1003,6 +1003,26 @@ class EpiComparison:
                 mask_baseline = nib.load(fname_seg_baseline).get_fdata()
                 mask_slicewise = nib.load(fname_seg_slicewise).get_fdata()
 
+                # Path of the anatomical
+                fname_anat = os.path.join(
+                    self.config["raw_dir"],
+                    self.config["preprocess_dir"]["main_dir"].format(ID),
+                    "anat",
+                    self.config["preprocess_f"]["anat_raw"].format(ID, "")
+                )
+                fname_anat_seg = os.path.join(
+                    self.config["raw_dir"],
+                    self.config["preprocess_dir"]["main_dir"].format(ID),
+                    self.config["preprocess_dir"]["anat_seg"],
+                    f"sub-{ID}_T2star_seg.nii.gz"
+                )
+                nii_anat = nib.load(fname_anat)
+                nii_anat_in_epi_space = resample_from_to(nii_anat, nib.load(fname_baseline), mode='grid-constant')
+                anat = nii_anat_in_epi_space.get_fdata()
+                nii_anat_mask = nib.load(fname_anat_seg)
+                nii_anat_mask_in_epi_space = resample_from_to(nii_anat_mask, nib.load(fname_baseline), mode='grid-constant')
+                mask_anat = nii_anat_mask_in_epi_space.get_fdata()
+
                 bound_lr = 16  # left-right bound
                 bound_ud = 16  # up-down bound
                 vmin, vmax = calc_vmin_vmax(mask_baseline, mask_slicewise, img_baseline, img_slicewise, False,
@@ -1013,13 +1033,16 @@ class EpiComparison:
                 # vmin = vmin + 0.1 * delta
                 vmax = vmax - 0.2 * delta
 
-                gs_baseline = gs_main[1, i_id * 3].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
-                gs_slicewise = gs_main[1, i_id * 3 + 1].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
+                gs_anat = gs_main[1, i_id * 4].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
+                gs_baseline = gs_main[1, i_id * 4 + 1].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
+                gs_slicewise = gs_main[1, i_id * 4 + 2].subgridspec(round(n_max_slices / show_slice_factor + 0.1), 1, hspace=0, wspace=0)
+                axs_anat = gs_anat.subplots()
                 axs_baseline = gs_baseline.subplots()
                 axs_slicewise = gs_slicewise.subplots()
 
                 range_slices = range(n_max_slices - 1, -1, -show_slice_factor)
                 for idx, slice_idx in enumerate(range_slices):
+                    com_anat = center_of_mass(mask_anat[:, :, slice_idx])
                     com_baseline = center_of_mass(mask_baseline[:, :, slice_idx])
                     com_slicewise = center_of_mass(mask_slicewise[:, :, slice_idx])
 
@@ -1033,65 +1056,71 @@ class EpiComparison:
                                             min(mask_slicewise.shape[0], int(com_slicewise[0] + bound_lr)))
                     crop_y_slicewise = slice(max(0, int(com_slicewise[1] - bound_ud)),
                                             min(mask_slicewise.shape[1], int(com_slicewise[1] + bound_ud)))
+                    crop_x_anat = slice(max(0, int(com_anat[0] - bound_lr)),
+                                        min(mask_anat.shape[0], int(com_anat[0] + bound_lr)))
+                    crop_y_anat = slice(max(0, int(com_anat[1] - bound_ud)),
+                                        min(mask_anat.shape[1], int(com_anat[1] + bound_ud)))
 
                     # Crop the images
+                    cropped_anat = anat[crop_x_anat, crop_y_anat, slice_idx]
                     cropped_baseline = img_baseline[crop_x_baseline, crop_y_baseline, slice_idx]
                     cropped_slicewise = img_slicewise[crop_x_slicewise, crop_y_slicewise, slice_idx]
 
+                    axs_anat[idx].imshow(cropped_anat.T, cmap='gray', origin='lower')
+                    axs_anat[idx].set_aspect('equal', adjustable='box')
                     axs_baseline[idx].imshow(cropped_baseline.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
                     axs_baseline[idx].set_aspect('equal', adjustable='box')
                     axs_slicewise[idx].imshow(cropped_slicewise.T, cmap='gray', origin='lower', vmin=vmin, vmax=vmax)
                     axs_slicewise[idx].set_aspect('equal', adjustable='box')
 
+                    color_anat = '#88CCF1'
                     color_baseline = '#ADA8A8'
                     color_slicewise = '#ED263F'
                     if idx == len(range_slices) - 1 and i_id == 0:
                         legend_fontsize = 10
-                        legend_elements = [Patch(facecolor='white', edgecolor=color_baseline, label='shimBase',
+                        legend_elements = [Patch(facecolor='white', edgecolor=color_anat, label='Reference',
                                                 linewidth=1.5),
-                                        Patch(facecolor='white', edgecolor=color_slicewise, label='shimSlice',
+                                           Patch(facecolor='white', edgecolor=color_baseline, label='shimBase',
+                                                linewidth=1.5),
+                                           Patch(facecolor='white', edgecolor=color_slicewise, label='shimSlice',
                                                 linewidth=1.5)]
-                        axs_baseline[idx].legend(handles=legend_elements, loc=(0, -0.75), fontsize=legend_fontsize)
+                        axs_anat[idx].legend(handles=legend_elements, loc=(0, -1), fontsize=legend_fontsize)
 
                         legend_elements = [Arrow(0, 0, 0.2, 0, color=color['sigtot'], label='Improvement in signal loss from overall inhomogeneity', width=0.1, lw=2),
                                         Arrow(0, 0, 0.2, 0, color=color['sigvert'], label='Improvement in signal loss from inter-vertebral discs', width=0.1, lw=2),
                                         Arrow(0, 0, 0.2, 0, color=color['geo'], label='Improvement in geometric distortions', width=0.1, lw=2)]
-                        axs_slicewise[idx].legend(handles=legend_elements, loc=(1.2, -1), fontsize=legend_fontsize, handler_map={mpatches.Arrow : HandlerPatch(patch_func=make_legend_arrow)})
+                        axs_slicewise[idx].legend(handles=legend_elements, loc=(0.75, -1), fontsize=legend_fontsize, handler_map={mpatches.Arrow : HandlerPatch(patch_func=make_legend_arrow)})
 
-                    # Color the borders of the baseline images in yellow to differentiate them from the slicewise images
-                    spine_thickness = 2.5
+                    # Remove ticks
+                    axs_anat[idx].tick_params(axis='both', which='both', length=0, labelbottom=False, labelleft=False, bottom=False, left=False)
                     axs_baseline[idx].tick_params(axis='both', which='both', length=0, labelbottom=False, labelleft=False, bottom=False, left=False)
-                    # Example: Change spine border thickness
+                    axs_slicewise[idx].tick_params(axis='both', which='both', length=0, labelbottom=False, labelleft=False, bottom=False, left=False)
+
+                    # Color the borders of the baseline images in a color to differentiate them from the slicewise images
+                    spine_thickness = 2.5
+                    for spine in axs_anat[idx].spines.values():
+                        spine.set_linewidth(spine_thickness)  # Set the border thickness
                     for spine in axs_baseline[idx].spines.values():
                         spine.set_linewidth(spine_thickness)  # Set the border thickness
-                    axs_baseline[idx].spines['left'].set_edgecolor(color_baseline)
-                    axs_baseline[idx].spines['right'].set_edgecolor(color_baseline)
-                    if idx == 0:
-                        axs_baseline[idx].spines['top'].set_edgecolor(color_baseline)
-                        axs_baseline[idx].spines['bottom'].set_visible(False)
-                    elif idx == len(range_slices) - 1:
-                        axs_baseline[idx].spines['top'].set_visible(False)
-                        axs_baseline[idx].spines['bottom'].set_edgecolor(color_baseline)
-                    else:
-                        axs_baseline[idx].spines['top'].set_visible(False)
-                        axs_baseline[idx].spines['top'].set_visible(False)
-
-                    axs_slicewise[idx].tick_params(axis='both', which='both', length=0, labelbottom=False,
-                                                labelleft=False, bottom=False, left=False)
-                    # Example: Change spine border thickness
                     for spine in axs_slicewise[idx].spines.values():
-                        spine.set_linewidth(spine_thickness)  # Set the border thickness to 2
-                    axs_slicewise[idx].spines['left'].set_edgecolor(color_slicewise)
-                    axs_slicewise[idx].spines['right'].set_edgecolor(color_slicewise)
-                    if idx == 0:
-                        axs_slicewise[idx].spines['top'].set_edgecolor(color_slicewise)
-                        axs_slicewise[idx].spines['bottom'].set_visible(False)
-                    elif idx == len(range_slices) - 1:
-                        axs_slicewise[idx].spines['top'].set_visible(False)
-                        axs_slicewise[idx].spines['bottom'].set_edgecolor(color_slicewise)
-                    else:
-                        axs_slicewise[idx].spines['top'].set_visible(False)
-                        axs_slicewise[idx].spines['top'].set_visible(False)
+                        spine.set_linewidth(spine_thickness)  # Set the border thickness
+
+                    def color_border(axs, idx, color):
+                        axs[idx].spines['left'].set_edgecolor(color)
+                        axs[idx].spines['right'].set_edgecolor(color)
+                        if idx == 0:
+                            axs[idx].spines['top'].set_edgecolor(color)
+                            axs[idx].spines['bottom'].set_visible(False)
+                        elif idx == len(range_slices) - 1:
+                            axs[idx].spines['top'].set_visible(False)
+                            axs[idx].spines['bottom'].set_edgecolor(color)
+                        else:
+                            axs[idx].spines['top'].set_visible(False)
+                            axs[idx].spines['top'].set_visible(False)
+
+                    color_border(axs_anat, idx, color_anat)
+                    color_border(axs_baseline, idx, color_baseline)
+                    color_border(axs_slicewise, idx, color_slicewise)
 
                     template_slice_idx = func_slice_to_template_slice(slice_idx, com_baseline[0], com_baseline[1], fname_warp_from_pam50_to_func_baseline, fname_baseline, ID, task, name_baseline,
                                                                   self.redo, self.path_fig_data, self.config)
@@ -1172,7 +1201,7 @@ class EpiComparison:
                         )
 
             self.fname_fig_epi_comparison = os.path.join(self.path_fig_epi_comparison, f"epi_comparison.png")
-            fig.savefig(self.fname_fig_epi_comparison, dpi=2000)
+            fig.savefig(self.fname_fig_epi_comparison, dpi=1000)
 
     def _create_comp_figure(self, ID, fname_avg_baseline, fname_avg_slicewise, show_avg=False, show_slice_factor=2):
         # Todo: Subject 93 has unknown slice ID, issue #101
