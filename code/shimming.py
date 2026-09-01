@@ -82,13 +82,6 @@ def main():
             "opt_cri": None,
             "slices": "volume"
         },
-        # "shimmed_volume_orders_012_pi": {
-        #     "order": "0,1,2",
-        #     "sig_loss": None,
-        #     "opt_meth": "pseudo_inverse",
-        #     "opt_cri": None,
-        #     "slices": "volume"
-        # },
         "shimmed_volume_orders_0123_linlsq": {
             "order": "0,1,2,3",
             "sig_loss": None,
@@ -96,27 +89,6 @@ def main():
             "opt_cri": None,
             "slices": "volume"
         },
-        # "shimmed_volume_orders_0123_pi": {
-        #     "order": "0,1,2,3",
-        #     "sig_loss": None,
-        #     "opt_meth": "pseudo_inverse",
-        #     "opt_cri": None,
-        #     "slices": "volume"
-        # },
-        # "shimmed_slicewise_pi_sigloss": {
-        #     "order": "0,1",
-        #     "sig_loss": "0.1",
-        #     "opt_meth": "pseudo_inverse",
-        #     "opt_cri": None,
-        #     "slices": "auto"
-        # },
-        # "shimmed_slicewise_pi": {
-        #     "order": "0,1",
-        #     "sig_loss": None,
-        #     "opt_meth": "pseudo_inverse",
-        #     "opt_cri": None,
-        #     "slices": "auto"
-        # },
         "shimmed_slicewise_sigint_slsqp": {
             "order": "0,1",
             "sig_loss": "10",
@@ -131,13 +103,6 @@ def main():
             "opt_cri": "rmse",
             "slices": "auto"
         },
-        # "shimmed_slicewise_sigint_linlsq": {
-        #     "order": "0,1",
-        #     "sig_loss": "0.1",
-        #     "opt_meth": "lin_lsq",
-        #     "opt_cri": None,
-        #     "slices": "auto"
-        # },
         "shimmed_slicewise_nosigint_linlsq": {
             "order": "0,1",
             "sig_loss": None,
@@ -517,7 +482,7 @@ def main():
     # #################################################################
     # # Simulate movement
     # #################################################################
-    # Todo: This is moving the whole baseline fieldmap, we need to differenciate between the volume shim and the effects comming from the SC.
+    # Todo: This is moving the whole baseline fieldmap, we need to differenciate between the volume shim and the effects coming from the SC.
     # movements = []
     # for x in np.linspace(-20, 20, 9):
     #     for y in np.linspace(-20, 20, 9):
