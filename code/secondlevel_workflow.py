@@ -314,12 +314,6 @@ i_fnames_tSNR_pair=[]
 for acq_name in config["design_exp"]["acq_names"]:
     i_fnames_tSNR_pair.append(os.path.join(second_level_dir.format("snr"), f"tsnr_n{len(IDs)}_{acq_name}_avg_in_PAM50.nii.gz"))
 
-ovals = [
-    Ellipse(
-        (35, 25), 30, 30, angle=0, edgecolor="green", facecolor="none", lw=2
-    ),
-]
-
 tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    output_fname=os.path.join(output_fig, f"n{len(IDs)}_tsnr_avg_map.png"),
                                    stat_min=5, 
@@ -327,7 +321,7 @@ tsnr_plot = figures.plot_fmri_maps(i_fnames=i_fnames_tSNR_pair,
                                    cmap='turbo',
                                    cbar_label='tSNR',
                                    background_fname=os.path.join(path_code, "template", config["PAM50_t2"]),redo=redo,
-                                   ovals=ovals, arrows=(((0.3, 0.42), (0.05, 0.42)), ((0.3, 0.6), (0.05, 0.6))))
+                                   arrows=(((0.3, 0.42), (0.05, 0.42)), ((0.3, 0.6), (0.05, 0.6))))
 
 figures.combine_plots(output_fname=os.path.join(output_fig, f"n{len(IDs)}_combined_SNR_plots.png"),
                       map_files=[tsnr_plot],
