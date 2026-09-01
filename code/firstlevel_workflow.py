@@ -99,13 +99,25 @@ print("")
 # EPI comparison figure
 fig_epi_comparison = postprocess.EpiComparison(config, IDs, redo)
 fig_epi_comparison.create_figure(show_avg=False)
-    
 
-print("=== EPI comparison script Done ===", flush=True)
+#------------------------------------------------------------------
+#------ III. Plot segmentation comparison
+#------------------------------------------------------------------
+print("=== Segmentation comparison script Start ===", flush=True)
 print("===================================", flush=True)
 print("")
+
+# --- Group figure
+# Segmentation comparison figure
+fig_seg_comparison = postprocess.SegmentationComparison(config, IDs, redo)
+fig_seg_comparison.create_figure()
+
+print("=== Segmentation comparison script Done ===", flush=True)
+print("===================================", flush=True)
+print("")
+
 #------------------------------------------------------------------
-#------ III. Run First level
+#------ IV. Run First level
 #------------------------------------------------------------------
 config["design_exp"]["task_names"] = ["motor"]
 print("")

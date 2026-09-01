@@ -12,6 +12,7 @@ RUN_DENOISING=false
 RUN_FIRSTLEVEL=false
 RUN_SECONDLEVEL=false
 RUN_FIGURES=false
+RUN_SHIMMING=false
 REDO=false
 
 # Parse arguments
@@ -25,6 +26,7 @@ while [[ $# -gt 0 ]]; do
         --denoising) RUN_DENOISING=true; shift;;
         --firstlevel) RUN_FIRSTLEVEL=true; shift;;
         --secondlevel) RUN_SECONDLEVEL=true; shift;;
+        --shimming) RUN_SHIMMING=true; shift;;
         --redo) REDO=true; shift;;
       *) echo "Unknown argument $1"; exit 1 ;;
     esac
@@ -34,6 +36,7 @@ if [ "${RUN_PREPROSS}" = false ] && \
    [ "${RUN_DENOISING}" = false ] && \
    [ "${RUN_FIRSTLEVEL}" = false ] && \
    [ "${RUN_SECONDLEVEL}" = false ] && \
+   [ "${RUN_SHIMMING}" = false ] && \
    [ "${RUN_FIGURES}" = false ]; then
     echo "ERROR: No processing step selected."
     echo "Use --preprocess, --denoising, --firstlevel and/or  --secondlevel"
@@ -80,6 +83,24 @@ if [ "${RUN_PREPROSS}" = true ]; then
     echo "kill ${PID}"
     wait ${PID}
     echo "Finished preprocessing!"
+fi
+
+# --------------------------
+# Run shimming
+# --------------------------
+
+if [ "${RUN_SHIMMING}" = true ]; then
+    echo "Starting shimming..."
+    nohup python -u ../code/shimming.py --path-data "${PATH_DATA}" --ids "${IDs[@]}" "${TASKS_ARG[@]}" --redo "${REDO}" \
+    > "nohup_shimming_${timestamp}.txt" 2>&1 &
+
+    PID=$!
+    echo "Shimming launched in background."
+    echo "Log file: log/nohup_shimming_${timestamp}.txt"
+    echo "To stop the process, run:"
+    echo "kill ${PID}"
+    wait ${PID}
+    echo "Finished shimming!"
 fi
 
 # --------------------------
